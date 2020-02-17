@@ -547,6 +547,9 @@ class Game:
 	def consoleDisplaySolution(self):
 		self.__consoleDisplay('CONTENT')
 
+	def getBombsLeft(self):
+		return self.__BOMBS_LEFT
+
 def new_game(silent=False, options=None, level='BEGINNER', specs={}):
 	if not silent:
 		print('Creating game object...')

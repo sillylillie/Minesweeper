@@ -2,7 +2,7 @@
 # `python3`
 # `from ai import *`
 # `from game import *`
-# `solver = AI(options={'PRINT_MODE': 'NOTHING'})`
+# `solver = Solver(options={'PRINT_MODE': 'NOTHING'})`
 # `mygame = start_game(silent=True, options={'DISPLAY_ON_MOVE': False, 'PRINT_GUIDES': True}, level='EXPERT', specs={})`
 # `solver.solve(mygame).consoleDisplayVisible()`
 
@@ -18,8 +18,7 @@ from game import *
 # 
 # __init__(options=None)
 # solve(game)
-
-class AI:
+class Solver:
 	__PRINT_CODE = {
 		'DOTS': 0,
 		'BOARD': 1,
@@ -270,7 +269,25 @@ class AI:
 
 		return game
 
-if __name__=='__main__':
+def solveMany(howMany):
+	solver = Solver(options={'PRINT_MODE': 'NOTHING'})
+	total = howMany
+	wins = 0
+
+	for i in range(howMany):
+		print('{}...'.format(i))
+		# Recommended sleep time:
+		# Beginner/Intermediate - 1 second
+		# Expert - 2.5 seconds
+		time.sleep(1)
+		mygame = start_game(silent=True, options={}, level='INTERMEDIATE', specs={})
+		solver.solve(mygame)
+		if mygame.getBombsLeft() == 0:
+			wins = wins + 1
+
+	print('Wins: {}/{} ({}%)'.format(wins, total, 100 * wins / total))
+
+def solveOne():
 	# TODO write a testing suite to run this over a long period to get data
 	# I want this testing suite to iterate over all possible starting locations of each board
 	# It should generate a percentage of how likely you are to get a playable board with no guessing
@@ -280,8 +297,9 @@ if __name__=='__main__':
 	# be fixed only when the user starts exactly there
 	# 
 	# Dependency: makes little sense before the data gathering listed below is implemented
+	# Q: does it matter that the displaced bombs on the first click will be randomly placed elsewhere?
 
-	solver = AI(options={'PRINT_MODE': 'NOTHING'})
+	solver = Solver(options={'PRINT_MODE': 'NOTHING'})
 	# Favorite one so far: startSeed=76964, seed=69365
 	mygame = start_game(silent=True, options={'DISPLAY_ON_MOVE': False, 'PRINT_GUIDES': True}, level='EXPERT', specs={})
 
@@ -297,4 +315,6 @@ if __name__=='__main__':
 	solver.solve(mygame)
 
 	mygame.consoleDisplayVisible()
-	
+
+if __name__=='__main__':
+	solveMany(50)
