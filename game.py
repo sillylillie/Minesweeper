@@ -1,36 +1,31 @@
-# Basic usage:
-# `python3`
-# `import api`
-# `g = api.start_game()`
+"""
+Basic usage:
+`python3`
+`import api`
+`g = api.start_game()`
+"""
 
 import copy
+import time
+import math
 import random
 
-# TODO get game to give more detailed info, such as:
-# Number of empty space clusters
-# Size of empty space clusters
-# Number of empty space cells
-# Number of 1s, 2s, etc.
-# Number of bombs touching the walls (more likely to cause guessing)
-# Final board (at win, loss, or draw; most interested in draw; spike interest in loss)
-# - this feature already exists but the game file will need to decide how to implement gathering data
-# - Q: should getting the current board and getting the data be different functions, so the current AI calls don't have to change?
-#      Or would it make data collection for the solver listed above simpler to gather all this with the help of the game?
+"""
+Public members:
 
-# Public members:
-# 
-# CELL_CODE
-# __init__(options=None)
-# exportGame
-# exportGameVisible
-# importGame(board)
-# populateBoard(level='BEGINNER', specs={})
-# open(x, y)
-# flag(x, y)
-# unflag(x, y)
-# chord(x, y)
-# consoleDisplaySolution()
-# consoleDisplayVisible()
+CELL_CODE
+__init__(options=None)
+exportGame
+exportGameVisible
+importGame(board)
+populateBoard(level='BEGINNER', specs={})
+open(x, y)
+flag(x, y)
+unflag(x, y)
+chord(x, y)
+consoleDisplaySolution()
+consoleDisplayVisible()
+"""
 class Game:
 	__LEVEL_CODE = {
 		'BEGINNER': {
@@ -83,6 +78,7 @@ class Game:
 	CELL_CODE.update(__CONTENT_CODE)
 
 	# options
+	__DEBUG = False
 	__DISPLAY_ON_MOVE = True
 	__PRINT_GUIDES = True
 	__SEED = None
@@ -95,9 +91,13 @@ class Game:
 	__GAME_STATE = __STATE_CODE['NOT_PLAYING']
 	__CHORD_STARTED = False
 	__BOMBS_LEFT = 0
+	__START_TIME = 0
+	__END_TIME = 0
 
 	def __init__(self, options=None):
 		if options is not None:
+			if 'DEBUG' in options:
+				self.__DEBUG = options['DEBUG']
 			if 'DISPLAY_ON_MOVE' in options:
 				self.__DISPLAY_ON_MOVE = options['DISPLAY_ON_MOVE']
 			if 'PRINT_GUIDES' in options:
@@ -150,6 +150,7 @@ class Game:
 
 			# check if game ended by win or loss
 			if self.__lostCheck():
+				self.__END_TIME = time.time() - self.__START_TIME
 				self.__GAME_STATE = self.__STATE_CODE['LOST']
 				if self.__DISPLAY_ON_MOVE:
 					self.consoleDisplayVisible()
@@ -157,6 +158,7 @@ class Game:
 					print('Game lost!')
 				return False
 			elif self.__wonCheck():
+				self.__END_TIME = time.time() - self.__START_TIME
 				self.__GAME_STATE = self.__STATE_CODE['CLEANING']
 				self.__cleanBoard()
 				self.__GAME_STATE = self.__STATE_CODE['WON']
@@ -173,18 +175,6 @@ class Game:
 	def exportGame(self):
 		return copy.deepcopy(self.__BOARD)
 
-	def exportGameVisible(self):
-		board = []
-		h = len(self.__BOARD)
-		if h == 0:
-			message = 'Board is not yet initialized. Cannot call display.'
-			raise Exception(message)
-		else:
-			w = len(self.__BOARD[0])
-
-		[board.append([self.__mergeVisible(self.__BOARD[i][j], 'STATUS') for j in range(w)]) for i in range(h)]
-		return board
-
 	def importGame(self, board):
 		self.__BOARD = copy.deepcopy(board)
 		# If none of the cells have been opened, 
@@ -197,6 +187,26 @@ class Game:
 		
 		self.__GAME_STATE = self.__STATE_CODE['PLAYING'] if playing else self.__STATE_CODE['READY_TO_PLAY']
 		return True
+
+	def getBoardVisible(self):
+		return self.__getBoard('STATUS')
+
+	def getBoardSolution(self):
+		if not self.__DEBUG and self.__GAME_STATE == self.__STATE_CODE['PLAYING']:
+			self.__GAME_STATE = self.__STATE_CODE['NOT_PLAYING']
+		return self.__getBoard('CONTENT')
+
+	def __getBoard(self, code):
+		board = []
+		h = len(self.__BOARD)
+		if h == 0:
+			message = 'Board is not yet initialized. Cannot call display.'
+			raise Exception(message)
+		else:
+			w = len(self.__BOARD[0])
+
+		[board.append([self.__mergeVisible(self.__BOARD[i][j], code) for j in range(w)]) for i in range(h)]
+		return board
 
 	# Do not try to simplify the following functions into one helper function.
 	# I tried. It would need to provide the following results: 
@@ -284,11 +294,15 @@ class Game:
 				if self.__BOARD[x][y]['CONTENT'] != self.__CONTENT_CODE['BOMB']:
 					self.__BOARD[x][y].update({'CONTENT': self.__CONTENT_CODE[str(self.__countBombs(x, y))]})
 
+		self.__START_TIME = 0
+		self.__END_TIME = 0
 		self.__GAME_STATE = self.__STATE_CODE['READY_TO_PLAY']
 
+	@__validateArguments
 	def __countFlags(self, x, y):
 		return self.__countNeighbors(x, y, 'STATUS', 'FLAGGED')
 
+	@__validateArguments
 	def __countBombs(self, x, y):
 		return self.__countNeighbors(x, y, 'CONTENT', 'BOMB')
 
@@ -305,7 +319,6 @@ class Game:
 
 		return count
 
-	@__validateArguments
 	def __getNeighborCoordinates(self, x, y):
 		coordinates = []
 		# These ranges specify a square around the given cell, 
@@ -372,6 +385,7 @@ class Game:
 			for n in bombNeighbors:
 				self.__moveBomb(n[0], n[1], x, y)
 			self.__GAME_STATE = self.__STATE_CODE['PLAYING']
+			self.__START_TIME = time.time()
 
 		cell = self.__BOARD[x][y]
 		gameEnd = self.__change_status(cell, 'COVERED', 'OPENED')
@@ -405,10 +419,9 @@ class Game:
 				self.__BOARD[n[0]][n[1]]['CONTENT'] = self.__CONTENT_CODE[str(value)]
 
 		while True:
-			# TODO potential bug: the randomness is not actually random because of the start_game seed
-			# On successive iterations of this board with its seed, the displacement location would be the same
-			# Or, it might be based on the seed for start location generation (used in start_game, from the same file)
-			# Should the user be asked to pass in another seed for randomly displacing bombs?
+			# TODO Should the user be asked to pass in another seed for randomly displacing bombs?
+			# Currently, because the generation of the board is the same for every successive run with a given seed, 
+			# the new location of displaced bombs will also be the same for every successive run with that seed
 			i = random.randrange(len(self.__BOARD))
 			j = random.randrange(len(self.__BOARD[0]))
 			if self.__BOARD[i][j]['CONTENT'] != self.__CONTENT_CODE['BOMB']:
@@ -503,6 +516,13 @@ class Game:
 		for y in self.__BOARD[0]:
 			print('==', end='')
 		print('\\')
+		# Number of seconds elapsed
+		print('| ', end='')
+		message = 'Time: {0:.2f}'.format(self.getTimeElapsed())
+		print(message, end='')
+		for column in range((2 * len(self.__BOARD[0])) - len(message)):
+			print(' ', end='')
+		print('  |' if self.__PRINT_GUIDES else '|')
 		# Number of bombs left
 		print('| ', end='')
 		message = 'Bombs left: {}'.format(self.__BOMBS_LEFT)
@@ -545,53 +565,16 @@ class Game:
 		self.__consoleDisplay('STATUS')
 
 	def consoleDisplaySolution(self):
+		# If they take a peek at the solution, then the game is over
+		if not self.__DEBUG and self.__GAME_STATE == self.__STATE_CODE['PLAYING']:
+			self.__GAME_STATE = self.__STATE_CODE['NOT_PLAYING']
 		self.__consoleDisplay('CONTENT')
 
 	def getBombsLeft(self):
 		return self.__BOMBS_LEFT
 
-def new_game(silent=False, options=None, level='BEGINNER', specs={}):
-	if not silent:
-		print('Creating game object...')
-		print('Using options {}'.format(options))
-	g = Game(options=options)
-
-	if not silent:
-		print('')
-
-	if not silent:
-		print('Generating game...')
-		print('Using level {} and specs {}.'.format(level, specs))
-	g.populateBoard(level=level, specs=specs)
-
-	if not silent:
-		print('')
-
-	return g
-
-def start_game(silent=False, startSeed=None, startPosition=None, options=None, level='BEGINNER', specs={}):
-	# TODO bug: this seed is messing up the seed for the game randomness
-	# Potential solution: move to different file
-	# Q: is it possible to have multiple random objects from the random package?
-	mySeed = random.randrange(100000) if startSeed is None else startSeed
-
-	if silent:
-		options.update({'SILENT': True})
-	g = new_game(silent=silent, options=options, level=level, specs=specs)
-	board = g.exportGame()
-
-	random.seed(mySeed)
-	h = len(board)
-	w = len(board[0])
-	x = random.randrange(h) if startPosition is None else startPosition[0]
-	y = random.randrange(w) if startPosition is None else startPosition[0]
-
-	if not silent:
-		print('Starting game with seed = {}'.format(mySeed))
-		print('Starting game with open({}, {})...'.format(x,y))
-
-	g.open(x,y)
-	return g
+	def getTimeElapsed(self):
+		return time.time() - self.__START_TIME
 
 # Used mainly for testing purposes
 if __name__=='__main__':

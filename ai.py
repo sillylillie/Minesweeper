@@ -1,24 +1,25 @@
-# Basic usage:
-# `python3`
-# `from ai import *`
-# `from game import *`
-# `solver = Solver(options={'PRINT_MODE': 'NOTHING'})`
-# `mygame = start_game(silent=True, options={'DISPLAY_ON_MOVE': False, 'PRINT_GUIDES': True}, level='EXPERT', specs={})`
-# `solver.solve(mygame).consoleDisplayVisible()`
+"""
+Basic usage:
+`python3`
+`from ai import *`
+`from game import *`
+`solver = Solver(options={'PRINT_MODE': 'NOTHING'})`
+`mygame = start_game(silent=True, options={'DISPLAY_ON_MOVE': False, 'PRINT_GUIDES': True}, level='EXPERT', specs={})`
+`solver.solve(mygame).consoleDisplayVisible()`
+"""
 
-
-import copy, time
+import copy
+import time
 from game import *
-# start_game(silent=False, startSeed=None, startPosition=None, options=None, level='BEGINNER', specs={})
-# new_game(silent=False, options=None, level='BEGINNER', specs={})
 # Game
 
 
-# Public members:
-# 
-# __init__(options=None)
-# solve(game)
-class Solver:
+"""
+Public members:
+
+__init__(options=None)
+solve(game)
+"""class Solver:
 	__PRINT_CODE = {
 		'DOTS': 0,
 		'BOARD': 1,
@@ -269,6 +270,49 @@ class Solver:
 
 		return game
 
+def new_game(silent=False, options=None, level='BEGINNER', specs={}):
+	if not silent:
+		print('Creating game object...')
+		print('Using options {}'.format(options))
+	g = Game(options=options)
+
+	if not silent:
+		print('')
+
+	if not silent:
+		print('Generating game...')
+		print('Using level {} and specs {}.'.format(level, specs))
+	g.populateBoard(level=level, specs=specs)
+
+	if not silent:
+		print('')
+
+	return g
+
+def start_game(silent=False, startSeed=None, startPosition=None, options=None, level='BEGINNER', specs={}):
+	# TODO bug: this seed is messing up the seed for the game randomness
+	# Potential solution: move to different file
+	# Q: is it possible to have multiple random objects from the random package?
+	mySeed = random.randrange(100000) if startSeed is None else startSeed
+
+	if silent:
+		options.update({'SILENT': True})
+	g = new_game(silent=silent, options=options, level=level, specs=specs)
+	board = g.exportGame()
+
+	random.seed(mySeed)
+	h = len(board)
+	w = len(board[0])
+	x = random.randrange(h) if startPosition is None else startPosition[0]
+	y = random.randrange(w) if startPosition is None else startPosition[1]
+
+	if not silent:
+		print('Starting game with seed = {}'.format(mySeed))
+		print('Starting game with open({}, {})...'.format(x,y))
+
+	g.open(x,y)
+	return g
+
 def solveMany(howMany):
 	solver = Solver(options={'PRINT_MODE': 'NOTHING'})
 	total = howMany
@@ -301,7 +345,7 @@ def solveOne():
 
 	solver = Solver(options={'PRINT_MODE': 'NOTHING'})
 	# Favorite one so far: startSeed=76964, seed=69365
-	mygame = start_game(silent=True, options={'DISPLAY_ON_MOVE': False, 'PRINT_GUIDES': True}, level='EXPERT', specs={})
+	mygame = start_game(silent=False, options={'DISPLAY_ON_MOVE': False, 'PRINT_GUIDES': True, 'PRINT_SEED': True}, level='EXPERT', specs={})
 
 	# TODO get solver to keep track of data, such as: 
 	# Number opened and flagged per loop
@@ -310,6 +354,12 @@ def solveOne():
 	# Number of loops
 	# Time required for each loop
 	# Result (win, loss, draw)
+	# Locations/number of empty space cells
+	# Number of empty space clusters
+	# Size of empty space clusters
+	# Locations/number of 1s, 2s, etc.
+	# Locations/number of bombs
+	# Number of bombs touching the walls (more likely to cause guessing)
 
 	# Note: modifies my own copy of mygame
 	solver.solve(mygame)
@@ -317,4 +367,5 @@ def solveOne():
 	mygame.consoleDisplayVisible()
 
 if __name__=='__main__':
-	solveMany(50)
+	# solveMany(50)
+	solveOne()
