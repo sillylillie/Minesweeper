@@ -1,3 +1,12 @@
+# Basic usage:
+# `python3`
+# `from ai import *`
+# `from game import *`
+# `solver = AI(options={'PRINT_MODE': 'NOTHING'})`
+# `mygame = start_game(silent=True, options={'DISPLAY_ON_MOVE': False, 'PRINT_GUIDES': True}, level='EXPERT', specs={})`
+# `solver.solve(mygame).consoleDisplayVisible()`
+
+
 import copy, time
 from game import *
 # start_game(silent=False, startSeed=None, startPosition=None, options=None, level='BEGINNER', specs={})
