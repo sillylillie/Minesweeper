@@ -95,6 +95,7 @@ class Game:
 	__BOARD = []
 	__GAME_STATE = __STATE_CODE['NOT_PLAYING']
 	__CHORD_STARTED = False
+	__TOTAL_BOMBS = 0
 	__BOMBS_LEFT = 0
 	__START_TIME = 0
 	__END_TIME = 0
@@ -248,6 +249,7 @@ class Game:
 		# Add all cells, set status to covered
 		[self.__BOARD.append([{'STATUS': self.__STATUS_CODE['COVERED'], 'CONTENT': self.__CONTENT_CODE['0']} for i in range(w)]) for j in range(h)]
 
+		self.__TOTAL_BOMBS = b
 		self.__BOMBS_LEFT = b
 
 		# Set cell content to bomb for b number of bombs, randomly placed
@@ -539,6 +541,9 @@ class Game:
 			self.__GAME_STATE = self.__STATE_CODE['NOT_PLAYING']
 		self.__consoleDisplay('CONTENT')
 
+	def getTotalBombs(self):
+		return self.__TOTAL_BOMBS
+
 	def getBombsLeft(self):
 		return self.__BOMBS_LEFT
 
@@ -571,20 +576,19 @@ class Game:
 		return True
 
 	def getGameVisible(self):
-		values = {}
-		values.update({'BOARD': self.__getBoard('STATUS')})
-		values.update({'BOMBS': self.getBombsLeft()})
-		values.update({'TIME': self.getTimeElapsed()})
-		return values
+		return self.__getGame('STATUS')
 
 	def getGameSolution(self):
 		if not self.__DEBUG and self.__GAME_STATE == self.__STATE_CODE['PLAYING']:
 			self.__GAME_STATE = self.__STATE_CODE['NOT_PLAYING']
+		return self.__getGame('CONTENT')
+
+	def __getGame(self, code):
 		values = {}
-		values.update({'BOARD': self.__getBoard('CONTENT')})
+		values.update({'BOARD': self.__getBoard(code)})
 		values.update({'BOMBS': self.getBombsLeft()})
 		values.update({'TIME': self.getTimeElapsed()})
-		return self.__getBoard('CONTENT')
+		return values
 
 	def __getBoard(self, code):
 		board = []
