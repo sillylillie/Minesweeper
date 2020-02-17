@@ -17,22 +17,70 @@ from game import *
 """
 Public members:
 
+RESULT_CODE
 __init__(options=None)
+getData()
+printData()
 solve(game)
-"""class Solver:
+"""
+class Solver:
 	__PRINT_CODE = {
 		'DOTS': 0,
 		'BOARD': 1,
 		'NOTHING': 2,
 	}
 
+	RESULT_CODE = {
+		'N/A': 0,
+		'WIN': 1,
+		'LOSS': 2,
+		'GIVE_UP': 3,
+	}
+
 	__CODES = Game.CELL_CODE
 	__PRINT_MODE = __PRINT_CODE['DOTS']
+
+	# TODO 
+	# ADD TO DATA COLLECTION IN SAMPLE
+	# 'GAME_SEED': 0,
+	# 'START_SEED': 0,
+	# 'START_POSITION': [0, 0], # Location of the first click
+
+	__DATA = {
+		'GAME': {
+			'RESULT': RESULT_CODE['N/A'], 
+			'CELL_COUNT': {
+				'TOTAL': 0, # height x width
+				'BOMBS': 0, # total bombs (not bombs left)
+				'BOMBS_AT_EDGES': 0, 
+				'NUMERICAL': [], # 0s, 1s, 2s, ..., and 8s
+			},
+			'OPENING': [], # For each element, store the size of the opening (a cluster of empty cells)
+		},
+		'LOOP': [], # example below; the first entry will be the state of the game before the first loop
+# 		'LOOP': [
+# 			{
+# 				'BOMBS_LEFT': 0,
+# 				'TIME_ELAPSED': 0,
+# 				'NUMBER_OPENED': 0,
+# 				'NUMBER_FLAGGED': 0,
+# 			}, 
+# 		],
+
+	}
 
 	def __init__(self, options=None):
 		if options is not None:
 			if 'PRINT_MODE' in options:
 				self.__PRINT_MODE = self.__PRINT_CODE[options['PRINT_MODE']]
+
+	def getData(self):
+		return self.__DATA
+
+	def printData(self):
+		print(self.__DATA['GAME'])
+		# for l in self.__DATA['LOOP']:
+		# 	print(l)
 
 	def __getAllNeighbors(self, board, x, y):
 		coordinates = []
@@ -73,20 +121,20 @@ solve(game)
 		if code is None:
 			return neighbors
 		else:
-			return self.__filterNeighbors(board, neighbors, code)
+			return self.__filterCells(board, neighbors, code)
 
-	def __filterNeighbors(self, board, neighbors, code):
+	def __filterCells(self, board, cells, code):
 		if code not in self.__CODES:
-			return self.__filterNeighborsOther(board, neighbors)
+			return self.__filterCellsOther(board, cells)
 
-		return [n for n in neighbors if board[n[0]][n[1]] == self.__CODES[code]]
+		return [n for n in cells if board[n[0]][n[1]] == self.__CODES[code]]
 
-	def __filterNeighborsOther(self, board, neighbors):
+	def __filterCellsOther(self, board, cells):
 		notOpened = []
-		notOpened.extend(self.__filterNeighbors(board, neighbors, 'COVERED'))
-		notOpened.extend(self.__filterNeighbors(board, neighbors, 'FLAGGED'))
-		notOpened.extend(self.__filterNeighbors(board, neighbors, 'OPENED'))
-		return [n for n in neighbors if n not in notOpened]
+		notOpened.extend(self.__filterCells(board, cells, 'COVERED'))
+		notOpened.extend(self.__filterCells(board, cells, 'FLAGGED'))
+		notOpened.extend(self.__filterCells(board, cells, 'OPENED'))
+		return [n for n in cells if n not in notOpened]
 
 	def __tryToFulfill(self, board, influencedCells, modifiedCells):
 		toOpen = []
@@ -94,14 +142,15 @@ solve(game)
 
 		# Check for negative base case
 		# 
-		# TODO implement checking based on the number of bombs left
+		# TODO --- IMPROVE ALGORITHM
+		# Implement checking based on the number of bombs left
 		# Dependency: requires info about the number of bombs left to be passed and 
 		# maintained within this function
 		for i in influencedCells:
 			neighbors = self.__getNeighbors(board, i[0], i[1])
-			nbsFlagged = self.__filterNeighbors(board, neighbors, 'FLAGGED')
-			nbsCovered = self.__filterNeighbors(board, neighbors, 'COVERED')
-			nbsOpened = self.__filterNeighbors(board, neighbors, 'OPENED')
+			nbsFlagged = self.__filterCells(board, neighbors, 'FLAGGED')
+			nbsCovered = self.__filterCells(board, neighbors, 'COVERED')
+			nbsOpened = self.__filterCells(board, neighbors, 'OPENED')
 
 			value = board[i[0]][i[1]]
 			value = int(value) if type(value) == type(0) else 0
@@ -122,7 +171,8 @@ solve(game)
 		toFlag = list(set(toFlag))
 
 		if len(toOpen) == 0 and len(toFlag) == 0:
-			# TODO implement option to continue the recursion by asking canIFlag/OpenThis on neighboring covered cells
+			# TODO --- IMPROVE ALGORITHM
+			# Implement option to continue the recursion by asking canIFlag/OpenThis on neighboring covered cells
 			# 
 			# # - - - <- this should be opened
 			# # 3 2 -
@@ -180,8 +230,6 @@ solve(game)
 		testBoard[coordinates[0]][coordinates[1]] = self.__CODES['FLAGGED']
 		modifiedCells = [coordinates]
 
-		# TODO considering the possibility of calling this again from the recursive call, 
-		# should we be using the code 'REALLY_OPENED' here?
 		influencedCells = self.__getNeighbors(board, coordinates[0], coordinates[1], code='REALLY_OPENED')
 
 		return self.__tryToFulfill(testBoard, influencedCells, modifiedCells)
@@ -195,7 +243,32 @@ solve(game)
 
 		return self.__tryToFulfill(testBoard, influencedCells, modifiedCells)
 
+	def __count(self, board, code):
+		cells = []
+		for x in range(len(board)):
+			for y in range(len(board[x])):
+				cells.append((x,y))
+		return len(self.__filterCells(board, cells, code))
+
+	def __updateDataLoop(self, index, turn, flagged=None, opened=None):
+		self.__DATA['LOOP'].append({})
+		self.__DATA['LOOP'][index]['BOMBS_LEFT'] = turn['BOMBS']
+		self.__DATA['LOOP'][index]['TIME_ELAPSED'] = '{0:.2f}'.format(turn['TIME'])
+		self.__DATA['LOOP'][index]['NUMBER_FLAGGED'] = 0 if flagged is None else flagged
+		self.__DATA['LOOP'][index]['NUMBER_OPENED'] = 1 if opened is None else opened
+
 	def solve(self, game):
+		# Information to keep track within the loops
+		loop_count = 0
+		done = False
+		previousTurn = game.getGameVisible()
+		thisTurn = game.getGameVisible()
+
+		# Set up data collection
+		self.__DATA['GAME']['RESULT'] = self.RESULT_CODE['N/A']
+		self.__DATA['GAME']['CELL_COUNT']['BOMBS'] = game.getTotalBombs()
+		self.__DATA['GAME']['CELL_COUNT']['TOTAL'] = game.getBoardHeight() * game.getBoardWidth()
+		self.__updateDataLoop(loop_count, thisTurn)
 
 		if self.__PRINT_MODE != self.__PRINT_CODE['NOTHING']:
 			print('\nVisible: ')
@@ -204,13 +277,13 @@ solve(game)
 			print('')
 			print('STARTING RECURSIVE ALGORITHM')
 
-		done = False
-		previousBoard = game.exportGameVisible()
-		currentBoard = game.exportGameVisible()
-
 		while(not done):
+			loop_count = loop_count + 1
 			time.sleep(0)
 
+			currentBoard = thisTurn['BOARD']
+
+			# Candidates for modification are any covered cells neighboring opened cells
 			candidates = []
 			for x in range(len(currentBoard)):
 				for y in range(len(currentBoard[x])):
@@ -221,40 +294,52 @@ solve(game)
 			toFlag = []
 
 			for c in candidates:
+				# If this move would conflict with game logic, canFlag is False
+				# If it is possible to do this move, canFlag contains two lists:
+				# canFlag[0] is a list of cells that would be opened according to game logic
+				# canFlag[1] is a list of cells that would be flagged according to game logic
 				canFlag = self.__canIFlagThis(currentBoard, c)
 				canOpen = self.__canIOpenThis(currentBoard, c)
 
 				if canFlag and canOpen:
-					# must open/flag any neighbors that BOTH tests suggested opening/flagging
+					# Should open/flag any neighbors that BOTH tests suggested opening/flagging
 					toOpen.extend([o for o in canFlag[0] if o in canOpen[0]])
 					toFlag.extend([o for o in canFlag[1] if o in canOpen[1]])
 
 				if not canFlag:
-					# must open the candidate and open/flag neighbors suggested in the correct test
+					# Must open the candidate and open/flag neighbors suggested in the correct test
 					toOpen.extend(canOpen[0])
 					toFlag.extend(canOpen[1])
 
 				if not canOpen:
-					# must flag the candidate and open/flag neighbors suggested in the correct test
+					# Must flag the candidate and open/flag neighbors suggested in the correct test
 					toOpen.extend(canFlag[0])
 					toFlag.extend(canFlag[1])
 
 			toOpen = list(set(toOpen))
 			toFlag = list(set(toFlag))
 
+			countOpened = 0
+			countFlagged = 0
+
 			for c in toOpen:
 				if game.open(c[0], c[1]):
+					self.__DATA['GAME']['RESULT'] = self.RESULT_CODE['WIN']
 					done = True
 					break;
+				countOpened = countOpened + 1
 			if not done:
 				for c in toFlag:
 					if game.flag(c[0], c[1]):
+						self.__DATA['GAME']['RESULT'] = self.RESULT_CODE['LOSS']
 						done = True
 						break;
+					countFlagged = countFlagged + 1
 
-			previousBoard = copy.deepcopy(currentBoard)
-			currentBoard = game.exportGameVisible()
-			if previousBoard == currentBoard:
+			previousTurn = copy.deepcopy(thisTurn)
+			thisTurn = game.getGameVisible()
+			if not done and previousTurn['BOARD'] == thisTurn['BOARD']:
+				self.__DATA['GAME']['RESULT'] = self.RESULT_CODE['GIVE_UP']
 				done = True
 
 			if self.__PRINT_MODE == self.__PRINT_CODE['DOTS']:
@@ -262,11 +347,32 @@ solve(game)
 			elif self.__PRINT_MODE == self.__PRINT_CODE['BOARD']:
 				game.consoleDisplayVisible()
 
+			# We want an update for every loop, including the last in case of giving up
+			self.__updateDataLoop(loop_count, thisTurn, flagged=countFlagged, opened=countOpened)
+
+		# Finish up solve function and return
 		if self.__PRINT_MODE != self.__PRINT_CODE['NOTHING']:
 			print('')
 			if self.__PRINT_MODE == self.__PRINT_CODE['DOTS']:
 				game.consoleDisplayVisible()
 			print('DONE')
+
+		# Finish up data collection
+		solution = game.getGameSolution()
+
+		# Count of each kind of cell content except bomb (0, 1, 2, etc.)
+		for i in range(9):
+			self.__DATA['GAME']['CELL_COUNT']['NUMERICAL'].append(self.__count(solution['BOARD'], str(i)))
+
+		# Count of bombs on the edge of the board (predicted more likely to end in giving up due to guessing)
+		edgesBoard = copy.deepcopy(solution['BOARD'])
+		for i in range(1, len(edgesBoard) - 1):
+			edgesBoard[i] = [edgesBoard[i][0], edgesBoard[i][len(edgesBoard[0]) - 1]]
+		self.__DATA['GAME']['CELL_COUNT']['BOMBS_AT_EDGES'] = self.__count(edgesBoard, 'BOMB')
+
+		# Size of each opening (connected cluster of empty cells)
+
+
 
 		return game
 
@@ -290,25 +396,21 @@ def new_game(silent=False, options=None, level='BEGINNER', specs={}):
 	return g
 
 def start_game(silent=False, startSeed=None, startPosition=None, options=None, level='BEGINNER', specs={}):
-	# TODO bug: this seed is messing up the seed for the game randomness
-	# Potential solution: move to different file
-	# Q: is it possible to have multiple random objects from the random package?
-	mySeed = random.randrange(100000) if startSeed is None else startSeed
-
 	if silent:
 		options.update({'SILENT': True})
 	g = new_game(silent=silent, options=options, level=level, specs=specs)
-	board = g.exportGame()
 
+	mySeed = random.randrange(100000) if startSeed is None else startSeed
 	random.seed(mySeed)
-	h = len(board)
-	w = len(board[0])
+	h = g.getBoardHeight()
+	w = g.getBoardWidth()
 	x = random.randrange(h) if startPosition is None else startPosition[0]
 	y = random.randrange(w) if startPosition is None else startPosition[1]
 
 	if not silent:
 		print('Starting game with seed = {}'.format(mySeed))
 		print('Starting game with open({}, {})...'.format(x,y))
+		print('')
 
 	g.open(x,y)
 	return g
@@ -316,56 +418,44 @@ def start_game(silent=False, startSeed=None, startPosition=None, options=None, l
 def solveMany(howMany):
 	solver = Solver(options={'PRINT_MODE': 'NOTHING'})
 	total = howMany
-	wins = 0
+	results = []
 
 	for i in range(howMany):
-		print('{}...'.format(i))
 		# Recommended sleep time:
 		# Beginner/Intermediate - 1 second
 		# Expert - 2.5 seconds
 		time.sleep(1)
+		print('{}...'.format(i))
 		mygame = start_game(silent=True, options={}, level='INTERMEDIATE', specs={})
 		solver.solve(mygame)
-		if mygame.getBombsLeft() == 0:
-			wins = wins + 1
 
+		results.append({})
+		data = solver.getData()
+		results[i]['RESULT'] = data['GAME']['RESULT'] == Solver.RESULT_CODE['WIN']
+		results[i]['BOMBS_AT_EDGES'] = data['GAME']['CELL_COUNT']['BOMBS_AT_EDGES']
+
+	wins = len([w for w in results if w['RESULT'] == Solver.RESULT_CODE['WIN']])
 	print('Wins: {}/{} ({}%)'.format(wins, total, 100 * wins / total))
 
-def solveOne():
-	# TODO write a testing suite to run this over a long period to get data
-	# I want this testing suite to iterate over all possible starting locations of each board
-	# It should generate a percentage of how likely you are to get a playable board with no guessing
-	# Ideal boards can be completed 100% of the time with no guessing
-	# There might be a range from 1% to 99%
-	# I expect many in the 0% to 1% range: board which have one guessing spot that can 
-	# be fixed only when the user starts exactly there
-	# 
-	# Dependency: makes little sense before the data gathering listed below is implemented
-	# Q: does it matter that the displaced bombs on the first click will be randomly placed elsewhere?
+	winBombs = [b['BOMBS_AT_EDGES'] for b in results if b['RESULT'] == Solver.RESULT_CODE['WIN']]
+	lossBombs = [b['BOMBS_AT_EDGES'] for b in results if b['RESULT'] != Solver.RESULT_CODE['WIN']]
+	sumBombs = sum(winBombs) + sum(lossBombs)
+	print('Average number of bombs on edge: {}'.format(sumBombs / total))
+	print('Average number of bombs on edge for wins: {}'.format(sum(winBombs) / wins))
+	print('Average number of bombs on edge for losses: {}'.format(sum(lossBombs) / (total - wins)))
 
+def solveOne():
 	solver = Solver(options={'PRINT_MODE': 'NOTHING'})
 	# Favorite one so far: startSeed=76964, seed=69365
-	mygame = start_game(silent=False, options={'DISPLAY_ON_MOVE': False, 'PRINT_GUIDES': True, 'PRINT_SEED': True}, level='EXPERT', specs={})
+	mygame = start_game(startSeed=36295, silent=False, options={'SEED': 10685, 'DISPLAY_ON_MOVE': False, 'PRINT_GUIDES': True, 'PRINT_SEED': True}, level='EXPERT', specs={})
 
-	# TODO get solver to keep track of data, such as: 
-	# Number opened and flagged per loop
-	# Number of bombs left after every loop
-	# Number of covered cells left after every loop
-	# Number of loops
-	# Time required for each loop
-	# Result (win, loss, draw)
-	# Locations/number of empty space cells
-	# Number of empty space clusters
-	# Size of empty space clusters
-	# Locations/number of 1s, 2s, etc.
-	# Locations/number of bombs
-	# Number of bombs touching the walls (more likely to cause guessing)
-
-	# Note: modifies my own copy of mygame
+	# Note: pass by reference; will modify my own copy
 	solver.solve(mygame)
 
 	mygame.consoleDisplayVisible()
 
+	solver.printData()
+
 if __name__=='__main__':
-	# solveMany(50)
-	solveOne()
+	solveMany(100)
+	# solveOne()
