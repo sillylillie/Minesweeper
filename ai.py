@@ -11,8 +11,6 @@ Basic usage:
 import copy
 import time
 from game import *
-# Game
-
 
 """
 Public members:
@@ -20,7 +18,6 @@ Public members:
 RESULT_CODE
 __init__(options=None)
 getData()
-printData()
 solve(game)
 """
 class Solver:
@@ -39,6 +36,7 @@ class Solver:
 
 	__CODES = Game.CELL_CODE
 	__PRINT_MODE = __PRINT_CODE['DOTS']
+	__DELAY = 0
 
 	# TODO 
 	# ADD TO DATA COLLECTION IN SAMPLE
@@ -73,14 +71,11 @@ class Solver:
 		if options is not None:
 			if 'PRINT_MODE' in options:
 				self.__PRINT_MODE = self.__PRINT_CODE[options['PRINT_MODE']]
+			if 'DELAY' in options:
+				self.__DELAY = options['DELAY']
 
 	def getData(self):
 		return self.__DATA
-
-	def printData(self):
-		print(self.__DATA['GAME'])
-		# for l in self.__DATA['LOOP']:
-		# 	print(l)
 
 	def __getAllNeighbors(self, board, x, y):
 		coordinates = []
@@ -279,7 +274,7 @@ class Solver:
 
 		while(not done):
 			loop_count = loop_count + 1
-			time.sleep(0)
+			time.sleep(self.__DELAY)
 
 			currentBoard = thisTurn['BOARD']
 
@@ -376,86 +371,5 @@ class Solver:
 
 		return game
 
-def new_game(silent=False, options=None, level='BEGINNER', specs={}):
-	if not silent:
-		print('Creating game object...')
-		print('Using options {}'.format(options))
-	g = Game(options=options)
-
-	if not silent:
-		print('')
-
-	if not silent:
-		print('Generating game...')
-		print('Using level {} and specs {}.'.format(level, specs))
-	g.populateBoard(level=level, specs=specs)
-
-	if not silent:
-		print('')
-
-	return g
-
-def start_game(silent=False, startSeed=None, startPosition=None, options=None, level='BEGINNER', specs={}):
-	if silent:
-		options.update({'SILENT': True})
-	g = new_game(silent=silent, options=options, level=level, specs=specs)
-
-	mySeed = random.randrange(100000) if startSeed is None else startSeed
-	random.seed(mySeed)
-	h = g.getBoardHeight()
-	w = g.getBoardWidth()
-	x = random.randrange(h) if startPosition is None else startPosition[0]
-	y = random.randrange(w) if startPosition is None else startPosition[1]
-
-	if not silent:
-		print('Starting game with seed = {}'.format(mySeed))
-		print('Starting game with open({}, {})...'.format(x,y))
-		print('')
-
-	g.open(x,y)
-	return g
-
-def solveMany(howMany):
-	solver = Solver(options={'PRINT_MODE': 'NOTHING'})
-	total = howMany
-	results = []
-
-	for i in range(howMany):
-		# Recommended sleep time:
-		# Beginner/Intermediate - 1 second
-		# Expert - 2.5 seconds
-		time.sleep(1)
-		print('{}...'.format(i))
-		mygame = start_game(silent=True, options={}, level='INTERMEDIATE', specs={})
-		solver.solve(mygame)
-
-		results.append({})
-		data = solver.getData()
-		results[i]['RESULT'] = data['GAME']['RESULT'] == Solver.RESULT_CODE['WIN']
-		results[i]['BOMBS_AT_EDGES'] = data['GAME']['CELL_COUNT']['BOMBS_AT_EDGES']
-
-	wins = len([w for w in results if w['RESULT'] == Solver.RESULT_CODE['WIN']])
-	print('Wins: {}/{} ({}%)'.format(wins, total, 100 * wins / total))
-
-	winBombs = [b['BOMBS_AT_EDGES'] for b in results if b['RESULT'] == Solver.RESULT_CODE['WIN']]
-	lossBombs = [b['BOMBS_AT_EDGES'] for b in results if b['RESULT'] != Solver.RESULT_CODE['WIN']]
-	sumBombs = sum(winBombs) + sum(lossBombs)
-	print('Average number of bombs on edge: {}'.format(sumBombs / total))
-	print('Average number of bombs on edge for wins: {}'.format(sum(winBombs) / wins))
-	print('Average number of bombs on edge for losses: {}'.format(sum(lossBombs) / (total - wins)))
-
-def solveOne():
-	solver = Solver(options={'PRINT_MODE': 'NOTHING'})
-	# Favorite one so far: startSeed=76964, seed=69365
-	mygame = start_game(startSeed=36295, silent=False, options={'SEED': 10685, 'DISPLAY_ON_MOVE': False, 'PRINT_GUIDES': True, 'PRINT_SEED': True}, level='EXPERT', specs={})
-
-	# Note: pass by reference; will modify my own copy
-	solver.solve(mygame)
-
-	mygame.consoleDisplayVisible()
-
-	solver.printData()
-
 if __name__=='__main__':
-	solveMany(100)
-	# solveOne()
+	print('Nothing to do here')
