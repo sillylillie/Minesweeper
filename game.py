@@ -15,9 +15,6 @@ Public members:
 
 CELL_CODE
 __init__(options=None)
-exportGame
-exportGameVisible
-importGame(board)
 populateBoard(level='BEGINNER', specs={})
 open(x, y)
 flag(x, y)
@@ -25,6 +22,14 @@ unflag(x, y)
 chord(x, y)
 consoleDisplaySolution()
 consoleDisplayVisible()
+getBombsLeft()
+getTimeElapsed()
+getBoardHeight()
+getBoardWidth()
+exportGame() # somewhat broken
+importGame(board) # somewhat broken
+getGameVisible()
+getGameSolution()
 """
 class Game:
 	__LEVEL_CODE = {
@@ -171,42 +176,6 @@ class Game:
 				return
 
 		return inner1
-
-	def exportGame(self):
-		return copy.deepcopy(self.__BOARD)
-
-	def importGame(self, board):
-		self.__BOARD = copy.deepcopy(board)
-		# If none of the cells have been opened, 
-		# then the state is READY_TO_PLAY
-		playing = False
-		for row in self.__BOARD:
-			for cell in row:
-				if cell['CONTENT'] != self.__CONTENT_CODE['COVERED'] and cell['CONTENT'] != self.__CONTENT_CODE['FLAGGED']:
-					playing = True
-		
-		self.__GAME_STATE = self.__STATE_CODE['PLAYING'] if playing else self.__STATE_CODE['READY_TO_PLAY']
-		return True
-
-	def getBoardVisible(self):
-		return self.__getBoard('STATUS')
-
-	def getBoardSolution(self):
-		if not self.__DEBUG and self.__GAME_STATE == self.__STATE_CODE['PLAYING']:
-			self.__GAME_STATE = self.__STATE_CODE['NOT_PLAYING']
-		return self.__getBoard('CONTENT')
-
-	def __getBoard(self, code):
-		board = []
-		h = len(self.__BOARD)
-		if h == 0:
-			message = 'Board is not yet initialized. Cannot call display.'
-			raise Exception(message)
-		else:
-			w = len(self.__BOARD[0])
-
-		[board.append([self.__mergeVisible(self.__BOARD[i][j], code) for j in range(w)]) for i in range(h)]
-		return board
 
 	# Do not try to simplify the following functions into one helper function.
 	# I tried. It would need to provide the following results: 
@@ -575,6 +544,59 @@ class Game:
 
 	def getTimeElapsed(self):
 		return time.time() - self.__START_TIME
+
+	def getBoardHeight(self):
+		return len(self.__BOARD)
+
+	def getBoardWidth(self):
+		return len(self.__BOARD[0]) if self.getBoardHeight() > 0 else 0
+
+	# TODO export and import somewhat broken
+	# There needs to be a way to import the game state
+	# As well as the number of bombs left and time
+	def exportGame(self):
+		return copy.deepcopy(self.__BOARD)
+
+	def importGame(self, board):
+		self.__BOARD = copy.deepcopy(board)
+		# If none of the cells have been opened, 
+		# then the state is READY_TO_PLAY
+		playing = False
+		for row in self.__BOARD:
+			for cell in row:
+				if cell['CONTENT'] != self.__CONTENT_CODE['COVERED'] and cell['CONTENT'] != self.__CONTENT_CODE['FLAGGED']:
+					playing = True
+		
+		self.__GAME_STATE = self.__STATE_CODE['PLAYING'] if playing else self.__STATE_CODE['READY_TO_PLAY']
+		return True
+
+	def getGameVisible(self):
+		values = {}
+		values.update({'BOARD': self.__getBoard('STATUS')})
+		values.update({'BOMBS': self.getBombsLeft()})
+		values.update({'TIME': self.getTimeElapsed()})
+		return values
+
+	def getGameSolution(self):
+		if not self.__DEBUG and self.__GAME_STATE == self.__STATE_CODE['PLAYING']:
+			self.__GAME_STATE = self.__STATE_CODE['NOT_PLAYING']
+		values = {}
+		values.update({'BOARD': self.__getBoard('CONTENT')})
+		values.update({'BOMBS': self.getBombsLeft()})
+		values.update({'TIME': self.getTimeElapsed()})
+		return self.__getBoard('CONTENT')
+
+	def __getBoard(self, code):
+		board = []
+		h = len(self.__BOARD)
+		if h == 0:
+			message = 'Board is not yet initialized. Cannot call display.'
+			raise Exception(message)
+		else:
+			w = len(self.__BOARD[0])
+
+		[board.append([self.__mergeVisible(self.__BOARD[i][j], code) for j in range(w)]) for i in range(h)]
+		return board
 
 # Used mainly for testing purposes
 if __name__=='__main__':
