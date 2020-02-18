@@ -562,7 +562,8 @@ class Game:
 	def exportGame(self):
 		return copy.deepcopy(self.__BOARD)
 
-	def importGame(self, board):
+	# def importGame(self, board, game_state, start_time, pause_time):
+	def importGame(self, board, game_state, start_time, pause_time):
 		self.__BOARD = copy.deepcopy(board)
 		# If none of the cells have been opened, 
 		# then the state is READY_TO_PLAY
