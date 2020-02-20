@@ -131,16 +131,14 @@ class Solver:
 		notOpened.extend(self.__filterCells(board, cells, 'OPENED'))
 		return [n for n in cells if n not in notOpened]
 
-	def __tryToFulfill(self, board, influencedCells, modifiedCells):
+	def __tryToFulfill(self, board, bombs, influencedCells, modifiedCells):
 		toOpen = []
 		toFlag = []
 
 		# Check for negative base case
-		# 
-		# TODO --- IMPROVE ALGORITHM
-		# Implement checking based on the number of bombs left
-		# Dependency: requires info about the number of bombs left to be passed and 
-		# maintained within this function
+		if bombs < 0:
+			return False
+
 		for i in influencedCells:
 			neighbors = self.__getNeighbors(board, i[0], i[1])
 			nbsFlagged = self.__filterCells(board, neighbors, 'FLAGGED')
@@ -166,6 +164,10 @@ class Solver:
 		toFlag = list(set(toFlag))
 
 		if len(toOpen) == 0 and len(toFlag) == 0:
+			toReturn = []
+			toReturn.append([c for c in modifiedCells if board[c[0]][c[1]] == self.__CODES['OPENED']])
+			toReturn.append([c for c in modifiedCells if board[c[0]][c[1]] == self.__CODES['FLAGGED']])
+
 			# TODO --- IMPROVE ALGORITHM
 			# Implement option to continue the recursion by asking canIFlag/OpenThis on neighboring covered cells
 			# 
@@ -185,9 +187,6 @@ class Solver:
 
 			# Reminder that the code 'OPENED' refers only to cells that were opened using the test board
 			# Anything that was opened on the real board will have a code ' ', 1, 2, etc.
-			toReturn = []
-			toReturn.append([c for c in modifiedCells if board[c[0]][c[1]] == self.__CODES['OPENED']])
-			toReturn.append([c for c in modifiedCells if board[c[0]][c[1]] == self.__CODES['FLAGGED']])
 
 			return toReturn
 
@@ -212,31 +211,32 @@ class Solver:
 		for c in toFlag:
 			board[c[0]][c[1]] = self.__CODES['FLAGGED']
 			nbsOfToFlag.extend(self.__getNeighbors(board, c[0], c[1], code='REALLY_OPENED'))
+			bombs = bombs - 1
 		modifiedCells.extend(toFlag)
 		influencedCells.extend(nbsOfToFlag)
 
 		modifiedCells = list(set(modifiedCells))
 		influencedCells = list(set(influencedCells))
 
-		return self.__tryToFulfill(board, influencedCells, modifiedCells)
+		return self.__tryToFulfill(board, bombs, influencedCells, modifiedCells)
 
-	def __canIFlagThis(self, board, coordinates):
+	def __canIFlagThis(self, board, bombs, coordinates):
 		testBoard = copy.deepcopy(board)
 		testBoard[coordinates[0]][coordinates[1]] = self.__CODES['FLAGGED']
 		modifiedCells = [coordinates]
 
 		influencedCells = self.__getNeighbors(board, coordinates[0], coordinates[1], code='REALLY_OPENED')
 
-		return self.__tryToFulfill(testBoard, influencedCells, modifiedCells)
+		return self.__tryToFulfill(testBoard, bombs - 1, influencedCells, modifiedCells)
 
-	def __canIOpenThis(self, board, coordinates):
+	def __canIOpenThis(self, board, bombs, coordinates):
 		testBoard = copy.deepcopy(board)
 		testBoard[coordinates[0]][coordinates[1]] = self.__CODES['OPENED']
 		modifiedCells = [coordinates]
 
 		influencedCells = self.__getNeighbors(board, coordinates[0], coordinates[1], code='REALLY_OPENED')
 
-		return self.__tryToFulfill(testBoard, influencedCells, modifiedCells)
+		return self.__tryToFulfill(testBoard, bombs, influencedCells, modifiedCells)
 
 	def __count(self, board, code):
 		cells = []
@@ -293,8 +293,8 @@ class Solver:
 				# If it is possible to do this move, canFlag contains two lists:
 				# canFlag[0] is a list of cells that would be opened according to game logic
 				# canFlag[1] is a list of cells that would be flagged according to game logic
-				canFlag = self.__canIFlagThis(currentBoard, c)
-				canOpen = self.__canIOpenThis(currentBoard, c)
+				canFlag = self.__canIFlagThis(currentBoard, thisTurn['BOMBS'], c)
+				canOpen = self.__canIOpenThis(currentBoard, thisTurn['BOMBS'], c)
 
 				if canFlag and canOpen:
 					# Should open/flag any neighbors that BOTH tests suggested opening/flagging

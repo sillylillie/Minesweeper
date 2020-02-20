@@ -120,7 +120,7 @@ class Game:
 				self.__PRINT_SEED = False
 
 		# For users that want a seed but don't want to supply it
-		self.__SEED = random.randrange(100000) if self.__SEED == None and (self.__REUSE_SEED or self.__PRINT_SEED) else self.__SEED
+		self.__SEED = random.randrange(100000) if self.__SEED == None else self.__SEED
 		if self.__SEED != None and not self.__REUSE_SEED:
 			if self.__PRINT_SEED:
 				print('Initializing with seed = {}'.format(self.__SEED))
@@ -589,6 +589,8 @@ class Game:
 		values.update({'BOARD': self.__getBoard(code)})
 		values.update({'BOMBS': self.getBombsLeft()})
 		values.update({'TIME': self.getTimeElapsed()})
+		if code == 'CONTENT':
+			values.update({'SEED': self.__SEED})
 		return values
 
 	def __getBoard(self, code):

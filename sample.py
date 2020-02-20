@@ -52,7 +52,7 @@ def start_game(silent=False, startSeed=None, startPosition=None, options=None, l
 		print('')
 
 	g.open(x,y)
-	return g
+	return (g, mySeed)
 
 def solveMany(howMany):
 	solver = Solver(options={'PRINT_MODE': 'NOTHING'})
@@ -63,25 +63,19 @@ def solveMany(howMany):
 		# Recommended sleep time:
 		# Beginner/Intermediate - 1 second
 		# Expert - 2.5 seconds
-		time.sleep(1)
-		print('{}...'.format(i))
-		mygame = start_game(silent=True, options={}, level='INTERMEDIATE', specs={})
+		time.sleep(2.5)
+		print('{}... '.format(i), end='')
+		mygame, start_seed = start_game(silent=True, options={}, level='EXPERT', specs={})
 		solver.solve(mygame)
+		print('Game seed: {}, '.format(mygame.getGameSolution()['SEED']), end='')
+		print('Start seed: {}'.format(start_seed))
 
 		results.append({})
 		data = solver.getData()
 		results[i]['RESULT'] = data['GAME']['RESULT'] == Solver.RESULT_CODE['WIN']
-		results[i]['BOMBS_AT_EDGES'] = data['GAME']['CELL_COUNT']['BOMBS_AT_EDGES']
 
 	wins = len([w for w in results if w['RESULT'] == Solver.RESULT_CODE['WIN']])
 	print('Wins: {}/{} ({}%)'.format(wins, total, 100 * wins / total))
-
-	winBombs = [b['BOMBS_AT_EDGES'] for b in results if b['RESULT'] == Solver.RESULT_CODE['WIN']]
-	lossBombs = [b['BOMBS_AT_EDGES'] for b in results if b['RESULT'] != Solver.RESULT_CODE['WIN']]
-	sumBombs = sum(winBombs) + sum(lossBombs)
-	print('Average number of bombs on edge: {}'.format(sumBombs / total))
-	print('Average number of bombs on edge for wins: {}'.format(sum(winBombs) / wins))
-	print('Average number of bombs on edge for losses: {}'.format(sum(lossBombs) / (total - wins)))
 
 def solveOne():
 	solver = Solver(options={'DELAY': 0.5, 'PRINT_MODE': 'BOARD'})
@@ -96,5 +90,5 @@ def solveOne():
 	# print(solver.getData())
 
 if __name__=='__main__':
-	# solveMany(100)
-	solveOne()
+	solveMany(100)
+	# solveOne()
