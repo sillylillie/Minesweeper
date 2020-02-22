@@ -54,33 +54,55 @@ def start_game(silent=False, startSeed=None, startPosition=None, options=None, l
 	g.open(x,y)
 	return (g, mySeed)
 
-def solveMany(howMany):
-	solver = Solver(options={'PRINT_MODE': 'NOTHING'})
-	total = howMany
+def printStats(data):
 	results = []
-
-	for i in range(howMany):
-		# Recommended sleep time:
-		# Beginner/Intermediate - 1 second
-		# Expert - 2.5 seconds
-		time.sleep(2.5)
-		print('{}... '.format(i), end='')
-		mygame, start_seed = start_game(silent=True, options={}, level='EXPERT', specs={})
-		solver.solve(mygame)
-		print('Game seed: {}, '.format(mygame.getGameSolution()['SEED']), end='')
-		print('Start seed: {}'.format(start_seed))
-
+	for d in range(len(data)):
 		results.append({})
-		data = solver.getData()
-		results[i]['RESULT'] = data['GAME']['RESULT'] == Solver.RESULT_CODE['WIN']
+		results[d]['RESULT'] = data[d]['solver']['GAME']['RESULT'] == Solver.RESULT_CODE['WIN']
+		results[d]['STILL_COVERED'] = data[d]['solver']['LOOP'][-1]['STILL_COVERED']
+		results[d]['PERCENT_EXPLORED'] = 1 - (results[d]['STILL_COVERED'] / data[d]['solver']['GAME']['CELL_COUNT']['TOTAL'])
+		results[d]['TIME'] = float(data[d]['solver']['LOOP'][-1]['TIME_ELAPSED'])
+
 
 	wins = len([w for w in results if w['RESULT'] == Solver.RESULT_CODE['WIN']])
-	print('Wins: {}/{} ({}%)'.format(wins, total, 100 * wins / total))
+	total = len(data)
+	print('Wins: {0}/{1} ({2:.2f}%)'.format(wins, total, 100 * wins / total))
+	print('Average exploration: {0:.2f}%'.format(100 * sum(r['PERCENT_EXPLORED'] for r in results) / total))
+	print('Average time: {0:.2f}'.format(sum([r['TIME'] for r in results]) / total))
+	if wins < total:
+		print('--- For lost boards only: ')
+		print('Average exploration: {0:.2f}%'.format(100 * sum(r['PERCENT_EXPLORED'] for r in results if r['RESULT'] != Solver.RESULT_CODE['WIN']) / (total - wins)))
+		print('Average time: {0:.2f}'.format(sum([r['TIME'] for r in results if r['RESULT'] != Solver.RESULT_CODE['WIN']]) / (total - wins)))
+	if wins > 0:
+		print('--- For won boards only: ')
+		print('Average exploration: {0:.2f}%'.format(100 * sum(r['PERCENT_EXPLORED'] for r in results if r['RESULT'] == Solver.RESULT_CODE['WIN']) / wins))
+		print('Average time: {0:.2f}'.format(sum([r['TIME'] for r in results if r['RESULT'] == Solver.RESULT_CODE['WIN']]) / wins))
+
+# Recommended sleep time:
+# Beginner/Intermediate - 1 second
+# Expert - 2.5 seconds
+def solveMany(howMany, sleep=1):
+	solver = Solver(options={'PRINT_MODE': 'NOTHING'})
+	total = howMany
+	data = []
+
+	for i in range(howMany):
+		time.sleep(sleep)
+
+		mygame, start_seed = start_game(silent=True, options={}, level='EXPERT', specs={})
+		solver.solve(mygame)
+
+		data.append({'solver': solver.getData(), 'game': mygame.getGameSolution()})
+
+		print('{}... Game seed: {}, Start seed: {}'.format(i, mygame.getGameSolution()['SEED'], start_seed))
+
+	printStats(data)
 
 def solveOne():
-	solver = Solver(options={'DELAY': 0.5, 'PRINT_MODE': 'BOARD'})
+	solver = Solver(options={'DELAY': 0, 'PRINT_MODE': 'DOTS'})
 	# Favorite one so far: startSeed=76964, seed=69365, level='EXPERT'
-	mygame = start_game(startSeed=76964, silent=False, options={'SEED': 69365, 'DISPLAY_ON_MOVE': False, 'PRINT_GUIDES': True, 'PRINT_SEED': True}, level='EXPERT', specs={})
+	# Interesting problem: startSeed=85173, seed=9357, level='EXPERT'
+	mygame = start_game(startSeed=2402, silent=False, options={'SEED': 51147, 'DISPLAY_ON_MOVE': False, 'PRINT_GUIDES': True, 'PRINT_SEED': True}, level='EXPERT', specs={})[0]
 
 	# Note: pass by reference; will modify my own copy
 	solver.solve(mygame)
@@ -90,5 +112,5 @@ def solveOne():
 	# print(solver.getData())
 
 if __name__=='__main__':
-	solveMany(100)
+	solveMany(500, sleep=0.05)
 	# solveOne()

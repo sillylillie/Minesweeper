@@ -44,10 +44,12 @@ class Solver:
 	# 'START_SEED': 0,
 	# 'START_POSITION': [0, 0], # Location of the first click
 
-	__DATA = {
+	__DATA_START = {
 		'GAME': {
 			'RESULT': RESULT_CODE['N/A'], 
 			'CELL_COUNT': {
+				'HEIGHT': 0,
+				'WIDTH': 0,
 				'TOTAL': 0, # height x width
 				'BOMBS': 0, # total bombs (not bombs left)
 				'BOMBS_AT_EDGES': 0, 
@@ -62,10 +64,13 @@ class Solver:
 # 				'TIME_ELAPSED': 0,
 # 				'NUMBER_OPENED': 0,
 # 				'NUMBER_FLAGGED': 0,
+# 				'STILL_COVERED': 0,
 # 			}, 
 # 		],
 
 	}
+
+	__DATA = copy.deepcopy(__DATA_START)
 
 	def __init__(self, options=None):
 		if options is not None:
@@ -131,7 +136,7 @@ class Solver:
 		notOpened.extend(self.__filterCells(board, cells, 'OPENED'))
 		return [n for n in cells if n not in notOpened]
 
-	def __tryToFulfill(self, board, bombs, influencedCells, modifiedCells):
+	def __checkFulfillment(self, board, bombs, influencedCells, modifiedCells):
 		toOpen = []
 		toFlag = []
 
@@ -148,21 +153,69 @@ class Solver:
 			value = board[i[0]][i[1]]
 			value = int(value) if type(value) == type(0) else 0
 
+			# Too many flags around a cell
 			if len(nbsFlagged) > value:
 				return False
+			# Completely fulfilled; open remaining neighbors
 			elif len(nbsFlagged) == value:
 				toOpen.extend(nbsCovered)
 			else:
+				# Not yet fulfilled; keep going
 				if len(nbsFlagged) + len(nbsCovered) > value:
 					pass
+				# Too many opened around a cell
 				elif len(nbsFlagged) + len(nbsCovered) < value:
 					return False
+				# Will be fulfilled; flag remaining neighbors
 				else:
 					toFlag.extend(nbsCovered)
 
-		toOpen = list(set(toOpen))
-		toFlag = list(set(toFlag))
+		return [toOpen, toFlag]
 
+
+	def __tryToFulfill(self, board, bombs, influencedCells, modifiedCells):
+		check = self.__checkFulfillment(board, bombs, influencedCells, modifiedCells)
+
+		# toOpen = []
+		# toFlag = []
+
+		# # Check for negative base case
+		# if bombs < 0:
+		# 	return False
+
+		# for i in influencedCells:
+		# 	neighbors = self.__getNeighbors(board, i[0], i[1])
+		# 	nbsFlagged = self.__filterCells(board, neighbors, 'FLAGGED')
+		# 	nbsCovered = self.__filterCells(board, neighbors, 'COVERED')
+		# 	nbsOpened = self.__filterCells(board, neighbors, 'OPENED')
+
+		# 	value = board[i[0]][i[1]]
+		# 	value = int(value) if type(value) == type(0) else 0
+
+		# 	if len(nbsFlagged) > value:
+		# 		return False
+		# 	elif len(nbsFlagged) == value:
+		# 		toOpen.extend(nbsCovered)
+		# 	else:
+		# 		if len(nbsFlagged) + len(nbsCovered) > value:
+		# 			pass
+		# 		elif len(nbsFlagged) + len(nbsCovered) < value:
+		# 			return False
+		# 		else:
+		# 			toFlag.extend(nbsCovered)
+
+		# Failed the check for fulfillment
+		if not check:
+			return False
+
+		# If check is not false, it will contain one list of toOpen and one list of toFlag
+		toOpen = list(set(check[0]))
+		toFlag = list(set(check[1]))
+
+		# TODO --- IMPROVE ALGORITHM
+		# if bombs is zero, open everything covered on the whole board
+
+		# Check for positive base case
 		if len(toOpen) == 0 and len(toFlag) == 0:
 			toReturn = []
 			toReturn.append([c for c in modifiedCells if board[c[0]][c[1]] == self.__CODES['OPENED']])
@@ -250,10 +303,15 @@ class Solver:
 		self.__DATA['LOOP'][index]['BOMBS_LEFT'] = turn['BOMBS']
 		self.__DATA['LOOP'][index]['TIME_ELAPSED'] = '{0:.2f}'.format(turn['TIME'])
 		self.__DATA['LOOP'][index]['NUMBER_FLAGGED'] = 0 if flagged is None else flagged
-		self.__DATA['LOOP'][index]['NUMBER_OPENED'] = 1 if opened is None else opened
+		self.__DATA['LOOP'][index]['NUMBER_OPENED'] = 0 if opened is None else opened
+		all_cells = []
+		for x in range(len(turn['BOARD'])):
+			all_cells.extend([(x, y) for y in range(len(turn['BOARD'][x]))])
+		self.__DATA['LOOP'][index]['STILL_COVERED'] = len(self.__filterCells(turn['BOARD'], all_cells, code='COVERED'))
 
 	def solve(self, game):
 		# Information to keep track within the loops
+		self.__DATA = copy.deepcopy(self.__DATA_START)
 		loop_count = 0
 		done = False
 		previousTurn = game.getGameVisible()
@@ -261,8 +319,10 @@ class Solver:
 
 		# Set up data collection
 		self.__DATA['GAME']['RESULT'] = self.RESULT_CODE['N/A']
-		self.__DATA['GAME']['CELL_COUNT']['BOMBS'] = game.getTotalBombs()
+		self.__DATA['GAME']['CELL_COUNT']['HEIGHT'] = game.getBoardHeight()
+		self.__DATA['GAME']['CELL_COUNT']['WIDTH'] = game.getBoardWidth()
 		self.__DATA['GAME']['CELL_COUNT']['TOTAL'] = game.getBoardHeight() * game.getBoardWidth()
+		self.__DATA['GAME']['CELL_COUNT']['BOMBS'] = game.getTotalBombs()
 		self.__updateDataLoop(loop_count, thisTurn)
 
 		if self.__PRINT_MODE != self.__PRINT_CODE['NOTHING']:
@@ -289,27 +349,29 @@ class Solver:
 			toFlag = []
 
 			for c in candidates:
-				# If this move would conflict with game logic, canFlag is False
-				# If it is possible to do this move, canFlag contains two lists:
-				# canFlag[0] is a list of cells that would be opened according to game logic
-				# canFlag[1] is a list of cells that would be flagged according to game logic
-				canFlag = self.__canIFlagThis(currentBoard, thisTurn['BOMBS'], c)
-				canOpen = self.__canIOpenThis(currentBoard, thisTurn['BOMBS'], c)
+				# For efficiency, check that the candidate has not been solved yet
+				if c not in toOpen and c not in toFlag:
+					# If this move would conflict with game logic, canFlag is False
+					# If it is possible to do this move, canFlag contains two lists:
+					# canFlag[0] is a list of cells that would be opened according to game logic
+					# canFlag[1] is a list of cells that would be flagged according to game logic
+					canFlag = self.__canIFlagThis(currentBoard, thisTurn['BOMBS'], c)
+					canOpen = self.__canIOpenThis(currentBoard, thisTurn['BOMBS'], c)
 
-				if canFlag and canOpen:
-					# Should open/flag any neighbors that BOTH tests suggested opening/flagging
-					toOpen.extend([o for o in canFlag[0] if o in canOpen[0]])
-					toFlag.extend([o for o in canFlag[1] if o in canOpen[1]])
+					if canFlag and canOpen:
+						# Should open/flag any neighbors that BOTH tests suggested opening/flagging
+						toOpen.extend([o for o in canFlag[0] if o in canOpen[0]])
+						toFlag.extend([o for o in canFlag[1] if o in canOpen[1]])
 
-				if not canFlag:
-					# Must open the candidate and open/flag neighbors suggested in the correct test
-					toOpen.extend(canOpen[0])
-					toFlag.extend(canOpen[1])
+					if not canFlag:
+						# Must open the candidate and open/flag neighbors suggested in the correct test
+						toOpen.extend(canOpen[0])
+						toFlag.extend(canOpen[1])
 
-				if not canOpen:
-					# Must flag the candidate and open/flag neighbors suggested in the correct test
-					toOpen.extend(canFlag[0])
-					toFlag.extend(canFlag[1])
+					if not canOpen:
+						# Must flag the candidate and open/flag neighbors suggested in the correct test
+						toOpen.extend(canFlag[0])
+						toFlag.extend(canFlag[1])
 
 			toOpen = list(set(toOpen))
 			toFlag = list(set(toFlag))
@@ -364,10 +426,6 @@ class Solver:
 		for i in range(1, len(edgesBoard) - 1):
 			edgesBoard[i] = [edgesBoard[i][0], edgesBoard[i][len(edgesBoard[0]) - 1]]
 		self.__DATA['GAME']['CELL_COUNT']['BOMBS_AT_EDGES'] = self.__count(edgesBoard, 'BOMB')
-
-		# Size of each opening (connected cluster of empty cells)
-
-
 
 		return game
 
