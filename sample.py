@@ -79,9 +79,8 @@ def printStats(data):
 		print('Average time: {0:.2f}'.format(sum([r['TIME'] for r in results if r['RESULT'] == Solver.RESULT_CODE['WIN']]) / wins))
 
 # Recommended sleep time:
-# Beginner/Intermediate - 1 second
-# Expert - 2.5 seconds
-def solveMany(howMany, sleep=1):
+# Expert - 0.1 seconds
+def solveMany(howMany, sleep=0.1):
 	solver = Solver(options={'PRINT_MODE': 'NOTHING'})
 	total = howMany
 	data = []
@@ -102,7 +101,7 @@ def solveOne():
 	solver = Solver(options={'DELAY': 0, 'PRINT_MODE': 'DOTS'})
 	# Favorite one so far: startSeed=76964, seed=69365, level='EXPERT'
 	# Interesting problem: startSeed=85173, seed=9357, level='EXPERT'
-	mygame = start_game(startSeed=2402, silent=False, options={'SEED': 51147, 'DISPLAY_ON_MOVE': False, 'PRINT_GUIDES': True, 'PRINT_SEED': True}, level='EXPERT', specs={})[0]
+	mygame = start_game(silent=False, options={'DISPLAY_ON_MOVE': False, 'PRINT_GUIDES': True, 'PRINT_SEED': True}, level='EXPERT', specs={})[0]
 
 	# Note: pass by reference; will modify my own copy
 	solver.solve(mygame)
@@ -112,5 +111,5 @@ def solveOne():
 	# print(solver.getData())
 
 if __name__=='__main__':
-	solveMany(500, sleep=0.05)
-	# solveOne()
+	# solveMany(500, sleep=0)
+	solveOne()

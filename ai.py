@@ -34,9 +34,19 @@ class Solver:
 		'GIVE_UP': 3,
 	}
 
+	__STATE_CODE = {
+		'INITIALIZED': 0,
+		'NORMAL': 1,
+		'WARNING': 2,
+		'CRITICAL': 3,
+		'GUESS': 4,
+		'DONE': 5,
+	}
+
 	__CODES = Game.CELL_CODE
 	__PRINT_MODE = __PRINT_CODE['DOTS']
 	__DELAY = 0
+	__AI_STATE = __STATE_CODE['INITIALIZED']
 
 	# TODO 
 	# ADD TO DATA COLLECTION IN SAMPLE
@@ -240,6 +250,48 @@ class Solver:
 
 			# Reminder that the code 'OPENED' refers only to cells that were opened using the test board
 			# Anything that was opened on the real board will have a code ' ', 1, 2, etc.
+			if False:
+			# if self.__AI_STATE == self.__STATE_CODE['WARNING']:
+				print('Starting further recursion!')
+				furtherCandidates = []
+				for i in influencedCells:
+					furtherCandidates.extend(self.__getNeighbors(board, i[0], i[1], code='COVERED'))
+
+				toOpen = []
+				toFlag = []
+
+				for c in furtherCandidates:
+					# For efficiency, check that the candidate has not been solved yet
+					if c not in toOpen and c not in toFlag:
+						# If this move would conflict with game logic, canFlag is False
+						# If it is possible to do this move, canFlag contains two lists:
+						# canFlag[0] is a list of cells that would be opened according to game logic
+						# canFlag[1] is a list of cells that would be flagged according to game logic
+						canFlag = self.__canIFlagThis(board, bombs, c)
+						canOpen = self.__canIOpenThis(board, bombs, c)
+
+						if canFlag and canOpen:
+							# Should open/flag any neighbors that BOTH tests suggested opening/flagging
+							toOpen.extend([o for o in canFlag[0] if o in canOpen[0]])
+							toFlag.extend([o for o in canFlag[1] if o in canOpen[1]])
+
+						if not canFlag:
+							# Must open the candidate and open/flag neighbors suggested in the correct test
+							toOpen.extend(canOpen[0])
+							toFlag.extend(canOpen[1])
+
+						if not canOpen:
+							# Must flag the candidate and open/flag neighbors suggested in the correct test
+							toOpen.extend(canFlag[0])
+							toFlag.extend(canFlag[1])
+
+				toOpen = list(set(toOpen))
+				toFlag = list(set(toFlag))
+
+				toReturn[0].extend(toOpen)
+				toReturn[1].extend(toFlag)
+
+				print('Got out of a further recursion depth level, and it {}'.format('helped!' if len(toOpen) > 0 and len(toFlag) > 0 else 'didn\'t help'))
 
 			return toReturn
 
@@ -311,9 +363,9 @@ class Solver:
 
 	def solve(self, game):
 		# Information to keep track within the loops
+		self.__AI_STATE = self.__STATE_CODE['NORMAL']
 		self.__DATA = copy.deepcopy(self.__DATA_START)
 		loop_count = 0
-		done = False
 		previousTurn = game.getGameVisible()
 		thisTurn = game.getGameVisible()
 
@@ -332,7 +384,7 @@ class Solver:
 			print('')
 			print('STARTING RECURSIVE ALGORITHM')
 
-		while(not done):
+		while(self.__AI_STATE != self.__STATE_CODE['DONE']):
 			loop_count = loop_count + 1
 			time.sleep(self.__DELAY)
 
@@ -381,31 +433,35 @@ class Solver:
 
 			for c in toOpen:
 				if game.open(c[0], c[1]):
+					self.__AI_STATE = self.__STATE_CODE['DONE']
 					self.__DATA['GAME']['RESULT'] = self.RESULT_CODE['WIN']
-					done = True
 					break;
 				countOpened = countOpened + 1
-			if not done:
+			if self.__AI_STATE != self.__STATE_CODE['DONE']:
 				for c in toFlag:
 					if game.flag(c[0], c[1]):
+						self.__AI_STATE = self.__STATE_CODE['DONE']
 						self.__DATA['GAME']['RESULT'] = self.RESULT_CODE['LOSS']
-						done = True
 						break;
 					countFlagged = countFlagged + 1
 
 			previousTurn = copy.deepcopy(thisTurn)
 			thisTurn = game.getGameVisible()
-			if not done and previousTurn['BOARD'] == thisTurn['BOARD']:
-				self.__DATA['GAME']['RESULT'] = self.RESULT_CODE['GIVE_UP']
-				done = True
+			if previousTurn['BOARD'] == thisTurn['BOARD']:
+				if self.__AI_STATE == self.__STATE_CODE['NORMAL']:
+					self.__AI_STATE = self.__STATE_CODE['WARNING']
+				elif self.__AI_STATE == self.__STATE_CODE['WARNING']:
+					self.__AI_STATE = self.__STATE_CODE['DONE']
+					self.__DATA['GAME']['RESULT'] = self.RESULT_CODE['GIVE_UP']
 
+			# We want an update for every loop, including the last in case of giving up
+			self.__updateDataLoop(loop_count, thisTurn, flagged=countFlagged, opened=countOpened)
+
+			# Print to console on every loop
 			if self.__PRINT_MODE == self.__PRINT_CODE['DOTS']:
 				print('.')
 			elif self.__PRINT_MODE == self.__PRINT_CODE['BOARD']:
 				game.consoleDisplayVisible()
-
-			# We want an update for every loop, including the last in case of giving up
-			self.__updateDataLoop(loop_count, thisTurn, flagged=countFlagged, opened=countOpened)
 
 		# Finish up solve function and return
 		if self.__PRINT_MODE != self.__PRINT_CODE['NOTHING']:
