@@ -506,7 +506,7 @@ class Game:
 		print('|===' if self.__PRINT_GUIDES else '|=', end='')
 		for y in self.__BOARD[0]:
 			print('==', end='')
-		print('\\')
+		print('|')
 		# Blank line / column numbers
 		print('|   ' if self.__PRINT_GUIDES else '| ', end='')
 		for column in range(len(self.__BOARD[0])):
