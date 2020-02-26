@@ -104,7 +104,9 @@ def solveOne():
 	solver = Solver(options={'GUESS': True, 'DELAY': 0, 'PRINT_MODE': 'DOTS'})
 	# Favorite one so far: startSeed=76964, seed=69365, level='EXPERT'
 	# Interesting problem: startSeed=85173, seed=9357, level='EXPERT'
+	
 	mygame = start_game(silent=False, options={'DISPLAY_ON_MOVE': False, 'PRINT_GUIDES': True, 'PRINT_SEED': True}, level='EXPERT', specs={})[0]
+	# mygame = start_game(startSeed=63615, silent=False, options={'SEED': 1281, 'DISPLAY_ON_MOVE': False, 'PRINT_GUIDES': True, 'PRINT_SEED': True}, level='EXPERT', specs={})[0]
 
 	# Note: pass by reference; will modify my own copy
 	try:
@@ -117,5 +119,5 @@ def solveOne():
 	# print(solver.getData())
 
 if __name__=='__main__':
-	solveMany(500, sleep=0)
-	# solveOne()
+	# solveMany(500, sleep=0)
+	solveOne()

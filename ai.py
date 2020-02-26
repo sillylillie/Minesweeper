@@ -346,11 +346,15 @@ class Solver:
 			print('STARTING RECURSIVE ALGORITHM')
 
 		while(self.__AI_STATE != self.__STATE_CODE['DONE']):
+			### SETUP LOOP
+			# Prepare loop with all necessary functions
 			loop_count = loop_count + 1
 			time.sleep(self.__DELAY)
 
 			currentBoard = thisTurn['BOARD']
 
+			### SEARCH PHASE
+			# Depending on the game mode, add certain cells to these arrays
 			toOpen = []
 			toFlag = []
 
@@ -395,12 +399,17 @@ class Solver:
 
 				toOpen.append(covered_cells[random.randrange(len(covered_cells))])
 
-
+			### WORK PHASE
+			# Open and flag the cells that were determined in the search phase
 			toOpen = list(set(toOpen))
 			toFlag = list(set(toFlag))
 
 			countOpened = 0
 			countFlagged = 0
+
+			for c in toFlag:
+				game.flag(c[0], c[1])
+				countFlagged = countFlagged + 1
 
 			for c in toOpen:
 				result = game.open(c[0], c[1])
@@ -414,21 +423,12 @@ class Solver:
 
 				if self.__AI_STATE == self.__STATE_CODE['DONE']:
 					break
-			if self.__AI_STATE != self.__STATE_CODE['DONE']:
-				for c in toFlag:
-					game.flag(c[0], c[1])
-					countFlagged = countFlagged + 1
 
+			### STATE CHECK PHASE
+			# Start the decision process to see if we need to elevate the level of solving
 			previousTurn = copy.deepcopy(thisTurn)
 			thisTurn = game.getGameVisible()
-			"""
-			'INITIALIZED': 0,
-			'NORMAL': 1,
-			'WARNING': 2,
-			'CRITICAL': 3,
-			'GUESS': 4,
-			'DONE': 5,
-			"""
+
 			if previousTurn['BOARD'] == thisTurn['BOARD']:
 				if self.__AI_STATE == self.__STATE_CODE['NORMAL']:
 					self.__AI_STATE = self.__STATE_CODE['WARNING']
@@ -442,10 +442,10 @@ class Solver:
 			elif self.__AI_STATE != self.__STATE_CODE['NORMAL'] and self.__AI_STATE != self.__STATE_CODE['DONE']:
 				self.__AI_STATE = self.__STATE_CODE['NORMAL']
 
-			# We want an update for every loop, including the last in case of giving up
+			### END OF LOOP PHASE
+			# Add data to data collection and print information to console
 			self.__updateDataLoop(loop_count, thisTurn, flagged=countFlagged, opened=countOpened)
 
-			# Print to console on every loop
 			if self.__PRINT_MODE == self.__PRINT_CODE['DOTS']:
 				print('.')
 			elif self.__PRINT_MODE == self.__PRINT_CODE['BOARD']:

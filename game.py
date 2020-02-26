@@ -150,7 +150,7 @@ class Game:
 				func(self, *args, **kwargs)
 				return
 			elif self.__GAME_STATE == self.__STATE_CODE['LOST'] or self.__GAME_STATE == self.__STATE_CODE['WON']:
-				return 'NOPE'
+				return
 			else:
 				raise Exception('Board is not yet initialized. Populate board to continue playing.')
 
