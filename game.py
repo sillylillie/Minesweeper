@@ -150,7 +150,7 @@ class Game:
 				func(self, *args, **kwargs)
 				return
 			elif self.__GAME_STATE == self.__STATE_CODE['LOST'] or self.__GAME_STATE == self.__STATE_CODE['WON']:
-				return
+				return 'NOPE'
 			else:
 				raise Exception('Board is not yet initialized. Populate board to continue playing.')
 
@@ -332,8 +332,6 @@ class Game:
 	def __change_status(self, cell, code, altcode):
 		if cell['STATUS'] == self.__STATUS_CODE[code]:
 			cell['STATUS'] = self.__STATUS_CODE[altcode]
-			return True
-		return False
 
 	@__validateArguments
 	def flag(self, x, y):
@@ -363,7 +361,8 @@ class Game:
 
 		# Chord if empty and not currently in the process of chording
 		if self.__mergeVisible(cell, 'STATUS') == self.__CONTENT_CODE['0'] and not self.__CHORD_STARTED:
-			gameEnd = self.chord(x, y)
+			possibleGameEnd = self.chord(x, y)
+			gameEnd = possibleGameEnd if possibleGameEnd else gameEnd
 		else:
 			self.__displayOnMove()
 
@@ -457,7 +456,11 @@ class Game:
 		allNeighbors = [n for n in allNeighbors if self.__BOARD[n[0]][n[1]]['STATUS'] == self.__STATUS_CODE['COVERED']]
 
 		for n in allNeighbors:
-			self.open(n[0], n[1])
+			value = self.open(n[0], n[1])
+			if value == True:
+				return True
+			elif value == False:
+				return False
 
 		# Filter out all recently opened neighbors that are not empty
 		allNeighbors = [n for n in allNeighbors if self.__BOARD[n[0]][n[1]]['CONTENT'] == self.__CONTENT_CODE['0']]
