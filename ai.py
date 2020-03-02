@@ -431,10 +431,10 @@ class Solver:
 
 			if previousTurn['BOARD'] == thisTurn['BOARD']:
 				if self.__AI_STATE == self.__STATE_CODE['NORMAL']:
-					self.__AI_STATE = self.__STATE_CODE['WARNING']
-				elif self.__AI_STATE == self.__STATE_CODE['WARNING']:
-					self.__AI_STATE = self.__STATE_CODE['CRITICAL']
-				elif self.__AI_STATE == self.__STATE_CODE['CRITICAL']:
+					# self.__AI_STATE = self.__STATE_CODE['WARNING']
+				# elif self.__AI_STATE == self.__STATE_CODE['WARNING']:
+					# self.__AI_STATE = self.__STATE_CODE['CRITICAL']
+				# elif self.__AI_STATE == self.__STATE_CODE['CRITICAL']:
 					self.__AI_STATE = self.__STATE_CODE['GUESS']
 				elif self.__AI_STATE == self.__STATE_CODE['GUESS']:
 					self.__AI_STATE = self.__STATE_CODE['DONE']

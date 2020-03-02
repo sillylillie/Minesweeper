@@ -57,7 +57,7 @@ class Game:
 	}
 
 	__CONTENT_CODE = {
-		'BOMB': 'B',
+		'BOMB': '*',
 		'0': ' ',
 		'1': 1,
 		'2': 2,
@@ -359,6 +359,9 @@ class Game:
 		cell = self.__BOARD[x][y]
 		gameEnd = self.__change_status(cell, 'COVERED', 'OPENED')
 
+		if self.__BOARD[x][y]['CONTENT'] == self.__CONTENT_CODE['BOMB']:
+			self.__BOMBS_LEFT = self.__BOMBS_LEFT - 1
+
 		# Chord if empty and not currently in the process of chording
 		if self.__mergeVisible(cell, 'STATUS') == self.__CONTENT_CODE['0'] and not self.__CHORD_STARTED:
 			possibleGameEnd = self.chord(x, y)
@@ -485,55 +488,74 @@ class Game:
 			message = 'Board is not yet initialized. Cannot call display.'
 			raise ValueError(message)
 
+		printedBoard = []
+
 		# Top fancy bit
-		print('/===' if self.__PRINT_GUIDES else '/=', end='')
+		temp = '/===' if self.__PRINT_GUIDES else '/='
 		for y in self.__BOARD[0]:
-			print('==', end='')
-		print('\\')
+			temp = temp + '=='
+		temp = temp + '\\'
+		printedBoard.append(temp)
+
 		# Number of seconds elapsed
-		print('| ', end='')
+		temp = '| '
 		message = 'Time: {0:.2f}'.format(self.getTimeElapsed())
-		print(message, end='')
+		temp = temp + message
 		for column in range((2 * len(self.__BOARD[0])) - len(message)):
-			print(' ', end='')
-		print('  |' if self.__PRINT_GUIDES else '|')
+			temp = temp + ' '
+		temp = temp + '  |' if self.__PRINT_GUIDES else '|'
+		printedBoard.append(temp)
+
 		# Number of bombs left
-		print('| ', end='')
+		temp = '| '
 		message = 'Bombs left: {}'.format(self.__BOMBS_LEFT)
-		print(message, end='')
+		temp = temp + message
 		for column in range((2 * len(self.__BOARD[0])) - len(message)):
-			print(' ', end='')
-		print('  |' if self.__PRINT_GUIDES else '|')
+			temp = temp + ' '
+		temp = temp + '  |' if self.__PRINT_GUIDES else '|'
+		printedBoard.append(temp)
 
 		# Separation bit
-		print('|===' if self.__PRINT_GUIDES else '|=', end='')
+		temp = '|===' if self.__PRINT_GUIDES else '|='
 		for y in self.__BOARD[0]:
-			print('==', end='')
-		print('|')
-		# Blank line / column numbers
-		print('|   ' if self.__PRINT_GUIDES else '| ', end='')
+			temp = temp + '=='
+		temp = temp + '|'
+		printedBoard.append(temp)
+
+		# Column numbers or empty line
+		temp = '|   ' if self.__PRINT_GUIDES else '| '
 		for column in range(len(self.__BOARD[0])):
-			print('{} '.format(str(column % 10)) if self.__PRINT_GUIDES else '  ', end='')
-		print('|')
+			temp = temp + '{} '.format(str(column % 10)) if self.__PRINT_GUIDES else '  '
+		temp = temp + '|'
+		printedBoard.append(temp)
 
 		# Row contents
 		for row in range(len(self.__BOARD)):
+			temp = ''
 			# Print the row number before the row contents
-			print('| {} '.format(str(row % 10)) if self.__PRINT_GUIDES else '| ', end='')
+			temp = temp + '| {} '.format(str(row % 10)) if self.__PRINT_GUIDES else '| '
 
 			for y in self.__BOARD[row]:
-				print(self.__mergeVisible(y, code), end=' ')
-			print('|')
+				temp = temp + '{} '.format(self.__mergeVisible(y, code))
+			temp = temp + '|'
+			printedBoard.append(temp)
+
+		# Empty line
+		temp = '|   ' if self.__PRINT_GUIDES else '| '
+		for y in self.__BOARD[0]:
+			temp = temp + '  '
+		temp = temp + '|'
+		printedBoard.append(temp)
 
 		# Bottom fancy bit
-		print('|   ' if self.__PRINT_GUIDES else '| ', end='')
+		temp = '\\===' if self.__PRINT_GUIDES else '\\='
 		for y in self.__BOARD[0]:
-			print('  ', end='')
-		print('|')
-		print('\\===' if self.__PRINT_GUIDES else '\\=', end='')
-		for y in self.__BOARD[0]:
-			print('==', end='')
-		print('/')
+			temp = temp + '=='
+		temp = temp + '/'
+		printedBoard.append(temp)
+
+		for p in printedBoard:
+			print(p)
 
 	def consoleDisplayVisible(self):
 		self.__consoleDisplay('STATUS')

@@ -102,11 +102,16 @@ def solveMany(howMany, sleep=0.1):
 
 # Favorite one so far: startSeed=76964, seed=69365, level='EXPERT'
 # Interesting problem: startSeed=85173, seed=9357, level='EXPERT'
+# Interesting problem: startSeed=7600, seed=3573, level='EXPERT'
+# Interesting flag: startSeed=47620, seed=38800, level='EXPERT'
+# Interesting problem: startSeed=76524, seed=88081, level='EXPERT'
+# Interesting problem: startSeed=45699, seed=62431, level='EXPERT' --- can be solved with probability
+
 def solveOne():
-	solver = Solver(options={'GUESS': True, 'DELAY': 0, 'PRINT_MODE': 'DOTS'})
-	
+	solver = Solver(options={'GUESS': False, 'DELAY': 0.1, 'PRINT_MODE': 'BOARD'})
+
 	mygame = start_game(silent=False, options={'DISPLAY_ON_MOVE': False, 'PRINT_GUIDES': True, 'PRINT_SEED': True}, level='EXPERT', specs={})[0]
-	# mygame = start_game(startSeed=63615, silent=False, options={'SEED': 1281, 'DISPLAY_ON_MOVE': False, 'PRINT_GUIDES': True, 'PRINT_SEED': True}, level='EXPERT', specs={})[0]
+	# mygame = start_game(startSeed=76524, silent=False, options={'SEED': 88081, 'DISPLAY_ON_MOVE': False, 'PRINT_GUIDES': True, 'PRINT_SEED': True}, level='EXPERT', specs={})[0]
 
 	# Note: pass by reference; will modify my own copy
 	try:
@@ -117,6 +122,9 @@ def solveOne():
 	# mygame.consoleDisplayVisible()
 
 	# print(solver.getData())
+
+	data = [{'solver': solver.getData(), 'game': mygame.getGameSolution()}]
+	printStats(data)
 
 if __name__=='__main__':
 	# solveMany(500, sleep=0)
