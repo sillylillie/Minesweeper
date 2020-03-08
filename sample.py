@@ -55,6 +55,10 @@ def start_game(silent=False, startSeed=None, startPosition=None, options=None, l
 	return (g, mySeed)
 
 def printStats(data):
+	if len(data) == 0:
+		print('No data collected')
+		return
+
 	results = []
 	for d in range(len(data)):
 		results.append({})
@@ -66,6 +70,8 @@ def printStats(data):
 
 	wins = len([w for w in results if w['RESULT'] == Solver.RESULT_CODE['WIN']])
 	total = len(data)
+
+	print('')
 	print('Wins: {0}/{1} ({2:.2f}%)'.format(wins, total, 100 * wins / total))
 	print('Average exploration: {0:.2f}%'.format(100 * sum(r['PERCENT_EXPLORED'] for r in results) / total))
 	print('Average time: {0:.2f}'.format(sum([r['TIME'] for r in results]) / total))
@@ -80,38 +86,38 @@ def printStats(data):
 
 # Recommended sleep time:
 # Expert - 0.1 seconds
-def solveMany(howMany, sleep=0.1):
-	solver = Solver(options={'GUESS': True, 'PRINT_MODE': 'NOTHING'})
+def solveMany(howMany, sleep=0.1, guess=False):
+	solver = Solver(options={'GUESS': guess, 'PRINT_MODE': 'NOTHING'})
 	total = howMany
 	data = []
 
 	for i in range(howMany):
-		time.sleep(sleep)
-
-		mygame, start_seed = start_game(silent=True, options={}, level='EXPERT', specs={})
 		try:
+			time.sleep(sleep)
+
+			mygame, start_seed = start_game(silent=True, options={}, level='EXPERT', specs={})
 			solver.solve(mygame)
-		except:
+
+			data.append({'solver': solver.getData(), 'game': mygame.getGameSolution()})
+
+			print('{}... Game seed: {}, Start seed: {}'.format(i, mygame.getGameSolution()['SEED'], start_seed))
+
+			if solver.getData()['LOOP'][-1]['BOMBS_LEFT'] == 0 and solver.getData()['GAME']['RESULT'] != Solver.RESULT_CODE['WIN']:
+				mygame.consoleDisplayVisible()
+		except KeyboardInterrupt as e:
+			break
+		except Exception as e:
 			mygame.consoleDisplayVisible()
-
-		data.append({'solver': solver.getData(), 'game': mygame.getGameSolution()})
-
-		print('{}... Game seed: {}, Start seed: {}'.format(i, mygame.getGameSolution()['SEED'], start_seed))
 
 	printStats(data)
 
-# Favorite one so far: startSeed=76964, seed=69365, level='EXPERT'
-# Interesting problem: startSeed=85173, seed=9357, level='EXPERT'
-# Interesting problem: startSeed=7600, seed=3573, level='EXPERT'
-# Interesting flag: startSeed=47620, seed=38800, level='EXPERT'
-# Interesting problem: startSeed=76524, seed=88081, level='EXPERT'
-# Interesting problem: startSeed=45699, seed=62431, level='EXPERT' --- can be solved with probability
+def solveOne(guess=False, delay=0.25, seeds=()):
+	solver = Solver(options={'GUESS': guess, 'DELAY': delay, 'PRINT_MODE': 'BOARD'})
 
-def solveOne():
-	solver = Solver(options={'GUESS': False, 'DELAY': 0.1, 'PRINT_MODE': 'BOARD'})
-
-	mygame = start_game(silent=False, options={'DISPLAY_ON_MOVE': False, 'PRINT_GUIDES': True, 'PRINT_SEED': True}, level='EXPERT', specs={})[0]
-	# mygame = start_game(startSeed=76524, silent=False, options={'SEED': 88081, 'DISPLAY_ON_MOVE': False, 'PRINT_GUIDES': True, 'PRINT_SEED': True}, level='EXPERT', specs={})[0]
+	if len(seeds) != 2:
+		mygame = start_game(silent=False, options={'DISPLAY_ON_MOVE': False, 'PRINT_GUIDES': True, 'PRINT_SEED': True}, level='EXPERT', specs={})[0]
+	else:
+		mygame = start_game(startSeed=seeds[0], silent=False, options={'SEED': seeds[1], 'DISPLAY_ON_MOVE': False, 'PRINT_GUIDES': True, 'PRINT_SEED': True}, level='EXPERT', specs={})[0]
 
 	# Note: pass by reference; will modify my own copy
 	try:
@@ -119,13 +125,28 @@ def solveOne():
 	except:
 		mygame.consoleDisplayVisible()
 
-	# mygame.consoleDisplayVisible()
-
-	# print(solver.getData())
-
 	data = [{'solver': solver.getData(), 'game': mygame.getGameSolution()}]
 	printStats(data)
 
 if __name__=='__main__':
-	# solveMany(500, sleep=0)
-	solveOne()
+	# solveMany(500, sleep=0.69, guess=False)
+	# solveOne(guess=True, delay=0.2)
+
+	# Favorite one so far
+	# solveOne(guess=False, delay=0.2, seeds=(76964, 69365))
+
+	# Integesting flag
+	# solveOne(guess=True, delay=0.2, seeds=(47620, 38800))
+
+	# PROBABILITY PROBLEMS: 
+	# Can find 1 to flag and 3 to open
+	# solveOne(guess=False, delay=0.2, seeds=(85173, 9357))
+
+	# Can find 2 to flag and 5 to open
+	# solveOne(guess=False, delay=0.2, seeds=(76524, 88081))
+	
+	# Can find 2 to open
+	# solveOne(guess=True, delay=0.2, seeds=(7600, 3573))
+
+	# Can find 2 to open
+	solveOne(guess=True, delay=0.2, seeds=(3129, 41698))
