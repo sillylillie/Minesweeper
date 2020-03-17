@@ -130,7 +130,7 @@ def solveOne(guess=False, delay=0.25, seeds=()):
 
 if __name__=='__main__':
 	# solveMany(500, sleep=0.69, guess=False)
-	# solveOne(guess=True, delay=0.2)
+	solveOne(guess=True, delay=0.2)
 
 	# Favorite one so far
 	# solveOne(guess=False, delay=0.2, seeds=(76964, 69365))
@@ -149,4 +149,4 @@ if __name__=='__main__':
 	# solveOne(guess=True, delay=0.2, seeds=(7600, 3573))
 
 	# Can find 2 to open
-	solveOne(guess=True, delay=0.2, seeds=(3129, 41698))
+	# solveOne(guess=True, delay=0.2, seeds=(3129, 41698))
