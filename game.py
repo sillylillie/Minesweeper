@@ -57,7 +57,7 @@ class Game:
 	}
 
 	__CONTENT_CODE = {
-		'BOMB': '*',
+		'BOMB': '!',
 		'0': ' ',
 		'1': 1,
 		'2': 2,
