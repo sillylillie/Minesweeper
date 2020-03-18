@@ -124,4 +124,3 @@ class RecursiveAlgorithm(MinesweeperFunctions):
 		influencedCells = self._getNeighbors(board, cell, code='REALLY_OPENED')
 
 		return self.__recursiveSolution(testBoard, bombs, influencedCells, modifiedCells)
-
