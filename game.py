@@ -409,6 +409,7 @@ class Game(MinesweeperFunctions):
 		else:
 			return cell[code]
 
+	# TODO put this also in functionality
 	def __consoleDisplay(self, code):
 		if len(self.__BOARD) == 0:
 			message = 'Board is not yet initialized. Cannot call display.'
