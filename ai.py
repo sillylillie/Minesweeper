@@ -8,9 +8,11 @@ Basic usage:
 `solver.solve(mygame).consoleDisplayVisible()`
 """
 
+from functionality import MinesweeperFunctions
 import copy
 import time
 from game import *
+import linalg
 
 """
 Public members:
@@ -20,7 +22,7 @@ __init__(options=None)
 getData()
 solve(game)
 """
-class Solver:
+class Solver(MinesweeperFunctions):
 	__PRINT_CODE = {
 		'DOTS': 0,
 		'BOARD': 1,
@@ -43,7 +45,6 @@ class Solver:
 		'DONE': 5,
 	}
 
-	__CODES = Game.CELL_CODE
 	__PRINT_MODE = __PRINT_CODE['DOTS']
 	__DELAY = 0
 	__AI_STATE = __STATE_CODE['INITIALIZED']
@@ -80,6 +81,8 @@ class Solver:
 	__DATA = copy.deepcopy(__DATA_START)
 
 	def __init__(self, options=None):
+		super().__init__('status_off')
+
 		if options is not None:
 			if 'PRINT_MODE' in options:
 				self.__PRINT_MODE = self.__PRINT_CODE[options['PRINT_MODE']]
@@ -91,73 +94,41 @@ class Solver:
 	def getData(self):
 		return self.__DATA
 
-	def __getAllNeighbors(self, board, x, y):
-		coordinates = []
-		# These ranges specify a square around the given cell, 
-		# so nine coordinates will be added to the list
-		for i in range(-1,2):
-			for j in range(-1,2):
-				coordinates.append((x + i, y + j))
+	def __setupDataCollection(self, game):
+		self.__DATA = copy.deepcopy(self.__DATA_START)
+		self.__DATA['GAME']['RESULT'] = self.RESULT_CODE['N/A']
+		self.__DATA['GAME']['CELL_COUNT']['HEIGHT'] = game.getBoardHeight()
+		self.__DATA['GAME']['CELL_COUNT']['WIDTH'] = game.getBoardWidth()
+		self.__DATA['GAME']['CELL_COUNT']['TOTAL'] = game.getBoardHeight() * game.getBoardWidth()
+		self.__DATA['GAME']['CELL_COUNT']['BOMBS'] = game.getTotalBombs()
 
-		# If the cell is at the top, bottom, left, or right sides
-		# of the board, then set the coordinates past the side 
-		# to None and later remove them from the return value
-		if x == 0:
-			coordinates[0] = None
-			coordinates[1] = None
-			coordinates[2] = None
-		if x == len(board) - 1:
-			coordinates[6] = None
-			coordinates[7] = None
-			coordinates[8] = None
-		if y == 0:
-			coordinates[0] = None
-			coordinates[3] = None
-			coordinates[6] = None
-		if y == len(board[0]) - 1:
-			coordinates[2] = None
-			coordinates[5] = None
-			coordinates[8] = None
-
-		# Set coordinates for the given cell to None
-		coordinates[4] = None
-		
-		return [c for c in coordinates if c is not None]
-
-	def __getNeighbors(self, board, x, y, code=None):
-		neighbors = self.__getAllNeighbors(board, x, y)
-
-		if code is None:
-			return neighbors
-		else:
-			return self.__filterCells(board, neighbors, code)
-
-	def __filterCells(self, board, cells, code):
-		if code not in self.__CODES:
-			return self.__filterCellsOther(board, cells)
-
-		return [n for n in cells if board[n[0]][n[1]] == self.__CODES[code]]
-
-	def __filterCellsOther(self, board, cells):
-		notOpened = []
-		notOpened.extend(self.__filterCells(board, cells, 'COVERED'))
-		notOpened.extend(self.__filterCells(board, cells, 'FLAGGED'))
-		notOpened.extend(self.__filterCells(board, cells, 'OPENED'))
-		return [n for n in cells if n not in notOpened]
+	def __updateDataLoop(self, index, turn, flagged=None, opened=None):
+		self.__DATA['LOOP'].append({})
+		self.__DATA['LOOP'][index]['BOMBS_LEFT'] = turn['BOMBS']
+		self.__DATA['LOOP'][index]['TIME_ELAPSED'] = '{0:.2f}'.format(turn['TIME'])
+		self.__DATA['LOOP'][index]['NUMBER_FLAGGED'] = 0 if flagged is None else flagged
+		self.__DATA['LOOP'][index]['NUMBER_OPENED'] = 0 if opened is None else opened
+		all_cells = [(x, y)
+			for x in range(len(turn['BOARD'])) 
+			for y in range(len(turn['BOARD'][x]))]
+		self.__DATA['LOOP'][index]['STILL_COVERED'] = len(self._filterCells(turn['BOARD'], all_cells, code='COVERED'))
 
 	def __checkFulfillment(self, board, bombs, influencedCells, modifiedCells):
 		toOpen = []
 		toFlag = []
+
+		# TODO --- IMPROVE ALGORITHM
+		# if bombs is zero, open everything covered on the whole board
 
 		# Check for negative base case
 		if bombs < 0:
 			return False
 
 		for i in influencedCells:
-			neighbors = self.__getNeighbors(board, i[0], i[1])
-			nbsFlagged = self.__filterCells(board, neighbors, 'FLAGGED')
-			nbsCovered = self.__filterCells(board, neighbors, 'COVERED')
-			nbsOpened = self.__filterCells(board, neighbors, 'OPENED')
+			neighbors = self._getNeighbors(board, i)
+			nbsFlagged = self._filterCells(board, neighbors, 'FLAGGED')
+			nbsCovered = self._filterCells(board, neighbors, 'COVERED')
+			nbsOpened = self._filterCells(board, neighbors, 'OPENED')
 
 			value = board[i[0]][i[1]]
 			value = int(value) if type(value) == type(0) else 0
@@ -186,7 +157,7 @@ class Solver:
 		# Is this board still possible to fulfill?
 		check = self.__checkFulfillment(board, bombs, influencedCells, modifiedCells)
 
-		# Failed the check for fulfillment
+		# Failed the check for fulfillment (negative base case)
 		if not check:
 			return False
 
@@ -194,14 +165,11 @@ class Solver:
 		toOpen = list(set(check[0]))
 		toFlag = list(set(check[1]))
 
-		# TODO --- IMPROVE ALGORITHM
-		# if bombs is zero, open everything covered on the whole board
-
 		# Check for positive base case
 		if len(toOpen) == 0 and len(toFlag) == 0:
 			toReturn = []
-			toReturn.append([c for c in modifiedCells if board[c[0]][c[1]] == self.__CODES['OPENED']])
-			toReturn.append([c for c in modifiedCells if board[c[0]][c[1]] == self.__CODES['FLAGGED']])
+			toReturn.append([c for c in modifiedCells if board[c[0]][c[1]] == self._CODES['OPENED']])
+			toReturn.append([c for c in modifiedCells if board[c[0]][c[1]] == self._CODES['FLAGGED']])
 
 			"""
 			# - - - <- this should be opened
@@ -216,9 +184,8 @@ class Solver:
 
 			return toReturn
 
+		# Failed a check for sanity: the same cell should not be marked toOpen and toFlag
 		if len([e for e in toOpen if e in toFlag]) > 0:
-			# The intersection containing coordinates of cells would indicate something went
-			# wrong and one cell is being asked to open as well as flag
 			return False
 
 		"""
@@ -230,15 +197,15 @@ class Solver:
 
 		nbsOfToOpen = []
 		for c in toOpen:
-			board[c[0]][c[1]] = self.__CODES['OPENED']
-			nbsOfToOpen.extend(self.__getNeighbors(board, c[0], c[1], code='REALLY_OPENED'))
+			board[c[0]][c[1]] = self._CODES['OPENED']
+			nbsOfToOpen.extend(self._getNeighbors(board, c, code='REALLY_OPENED'))
 		modifiedCells.extend(toOpen)
 		influencedCells.extend(nbsOfToOpen)
 
 		nbsOfToFlag = []
 		for c in toFlag:
-			board[c[0]][c[1]] = self.__CODES['FLAGGED']
-			nbsOfToFlag.extend(self.__getNeighbors(board, c[0], c[1], code='REALLY_OPENED'))
+			board[c[0]][c[1]] = self._CODES['FLAGGED']
+			nbsOfToFlag.extend(self._getNeighbors(board, c, code='REALLY_OPENED'))
 			bombs = bombs - 1
 		modifiedCells.extend(toFlag)
 		influencedCells.extend(nbsOfToFlag)
@@ -250,46 +217,40 @@ class Solver:
 
 	def __canIFlagThis(self, board, bombs, coordinates):
 		testBoard = copy.deepcopy(board)
-		testBoard[coordinates[0]][coordinates[1]] = self.__CODES['FLAGGED']
+		testBoard[coordinates[0]][coordinates[1]] = self._CODES['FLAGGED']
 		modifiedCells = [coordinates]
 
-		influencedCells = self.__getNeighbors(board, coordinates[0], coordinates[1], code='REALLY_OPENED')
+		influencedCells = self._getNeighbors(board, coordinates, code='REALLY_OPENED')
 
 		return self.__recursiveSolution(testBoard, bombs - 1, influencedCells, modifiedCells)
 
 	def __canIOpenThis(self, board, bombs, coordinates):
 		testBoard = copy.deepcopy(board)
-		testBoard[coordinates[0]][coordinates[1]] = self.__CODES['OPENED']
+		testBoard[coordinates[0]][coordinates[1]] = self._CODES['OPENED']
 		modifiedCells = [coordinates]
 
-		influencedCells = self.__getNeighbors(board, coordinates[0], coordinates[1], code='REALLY_OPENED')
+		influencedCells = self._getNeighbors(board, coordinates, code='REALLY_OPENED')
 
 		return self.__recursiveSolution(testBoard, bombs, influencedCells, modifiedCells)
 
-	def __count(self, board, code):
-		cells = []
-		for x in range(len(board)):
-			for y in range(len(board[x])):
-				cells.append((x,y))
-		return len(self.__filterCells(board, cells, code))
+	def __stateCheckPhase(self, previousTurn, thisTurn):
+		if previousTurn['BOARD'] == thisTurn['BOARD']:
+			# if self.__AI_STATE == self.__STATE_CODE['NORMAL']:
+				# self.__AI_STATE = self.__STATE_CODE['WARNING']
+			# elif self.__AI_STATE == self.__STATE_CODE['WARNING']:
+				# self.__AI_STATE = self.__STATE_CODE['CRITICAL']
+			# elif self.__AI_STATE == self.__STATE_CODE['CRITICAL']:
+				# self.__AI_STATE = self.__STATE_CODE['GUESS']
 
-	def __updateDataLoop(self, index, turn, flagged=None, opened=None):
-		self.__DATA['LOOP'].append({})
-		self.__DATA['LOOP'][index]['BOMBS_LEFT'] = turn['BOMBS']
-		self.__DATA['LOOP'][index]['TIME_ELAPSED'] = '{0:.2f}'.format(turn['TIME'])
-		self.__DATA['LOOP'][index]['NUMBER_FLAGGED'] = 0 if flagged is None else flagged
-		self.__DATA['LOOP'][index]['NUMBER_OPENED'] = 0 if opened is None else opened
-		all_cells = []
-		for x in range(len(turn['BOARD'])):
-			all_cells.extend([(x, y) for y in range(len(turn['BOARD'][x]))])
-		self.__DATA['LOOP'][index]['STILL_COVERED'] = len(self.__filterCells(turn['BOARD'], all_cells, code='COVERED'))
-
-	def __setupDataCollection(self, game):
-		self.__DATA['GAME']['RESULT'] = self.RESULT_CODE['N/A']
-		self.__DATA['GAME']['CELL_COUNT']['HEIGHT'] = game.getBoardHeight()
-		self.__DATA['GAME']['CELL_COUNT']['WIDTH'] = game.getBoardWidth()
-		self.__DATA['GAME']['CELL_COUNT']['TOTAL'] = game.getBoardHeight() * game.getBoardWidth()
-		self.__DATA['GAME']['CELL_COUNT']['BOMBS'] = game.getTotalBombs()
+			if self.__AI_STATE == self.__STATE_CODE['NORMAL']:
+				self.__AI_STATE = self.__STATE_CODE['WARNING']
+			elif self.__AI_STATE == self.__STATE_CODE['WARNING']:
+				self.__AI_STATE = self.__STATE_CODE['GUESS']
+			elif self.__AI_STATE == self.__STATE_CODE['GUESS']:
+				self.__AI_STATE = self.__STATE_CODE['DONE']
+				self.__DATA['GAME']['RESULT'] = self.RESULT_CODE['GIVE_UP']
+		elif self.__AI_STATE != self.__STATE_CODE['NORMAL'] and self.__AI_STATE != self.__STATE_CODE['DONE']:
+			self.__AI_STATE = self.__STATE_CODE['NORMAL']
 
 	def __searchPhase(self, thisTurn):
 		# Depending on the game mode, add certain cells to these arrays
@@ -298,11 +259,11 @@ class Solver:
 
 		if self.__AI_STATE == self.__STATE_CODE['NORMAL']:
 			# Candidates for modification are any covered cells neighboring opened cells
-			candidates = []
-			for x in range(len(thisTurn['BOARD'])):
-				for y in range(len(thisTurn['BOARD'][x])):
-					if thisTurn['BOARD'][x][y] == self.__CODES['COVERED'] and len(self.__getNeighbors(thisTurn['BOARD'], x, y, code='REALLY_OPENED')) > 0 :
-						candidates.append((x, y))
+			candidates = [(x, y)
+				for x in range(len(thisTurn['BOARD'])) 
+				for y in range(len(thisTurn['BOARD'][x]))
+				if thisTurn['BOARD'][x][y] == self._CODES['COVERED'] 
+				and len(self._getNeighbors(thisTurn['BOARD'], (x, y), code='REALLY_OPENED')) > 0]
 
 			for c in candidates:
 				# For efficiency, check that the candidate has not been solved yet
@@ -329,32 +290,19 @@ class Solver:
 						toOpen.extend(canFlag[0])
 						toFlag.extend(canFlag[1])
 
-		if self.__AI_STATE == self.__STATE_CODE['GUESS'] and self.__GUESS == True:
-			all_cells = []
-			for x in range(len(thisTurn['BOARD'])):
-				all_cells.extend([(x, y) for y in range(len(thisTurn['BOARD'][x]))])
-			covered_cells = self.__filterCells(thisTurn['BOARD'], all_cells, 'COVERED')
+		elif self.__AI_STATE == self.__STATE_CODE['WARNING']:
+			toOpen, toFlag = linalg.solution(self, thisTurn)
+
+
+		elif self.__AI_STATE == self.__STATE_CODE['GUESS'] and self.__GUESS == True:
+			all_cells = [(x, y)
+				for x in range(len(thisTurn['BOARD'])) 
+				for y in range(len(thisTurn['BOARD'][x]))]
+			covered_cells = self._filterCells(thisTurn['BOARD'], all_cells, 'COVERED')
 
 			toOpen.append(covered_cells[random.randrange(len(covered_cells))])
 
 		return (toOpen, toFlag)
-
-	def __stateCheckPhase(self, previousTurn, thisTurn):
-		if previousTurn['BOARD'] == thisTurn['BOARD']:
-			# if self.__AI_STATE == self.__STATE_CODE['NORMAL']:
-				# self.__AI_STATE = self.__STATE_CODE['WARNING']
-			# elif self.__AI_STATE == self.__STATE_CODE['WARNING']:
-				# self.__AI_STATE = self.__STATE_CODE['CRITICAL']
-			# elif self.__AI_STATE == self.__STATE_CODE['CRITICAL']:
-				# self.__AI_STATE = self.__STATE_CODE['GUESS']
-
-			if self.__AI_STATE == self.__STATE_CODE['NORMAL']:
-				self.__AI_STATE = self.__STATE_CODE['GUESS']
-			elif self.__AI_STATE == self.__STATE_CODE['GUESS']:
-				self.__AI_STATE = self.__STATE_CODE['DONE']
-				self.__DATA['GAME']['RESULT'] = self.RESULT_CODE['GIVE_UP']
-		elif self.__AI_STATE != self.__STATE_CODE['NORMAL'] and self.__AI_STATE != self.__STATE_CODE['DONE']:
-			self.__AI_STATE = self.__STATE_CODE['NORMAL']
 
 	"""
 	Expects an already-started game (unless guessing is turned on)
@@ -362,12 +310,11 @@ class Solver:
 	def solve(self, game):
 		# Information to keep track within the loops
 		self.__AI_STATE = self.__STATE_CODE['NORMAL']
-		self.__DATA = copy.deepcopy(self.__DATA_START)
-		loop_count = 0
 		previousTurn = game.getGameVisible()
 		thisTurn = game.getGameVisible()
 
 		# Set up data collection and add first loop information
+		loop_count = 0
 		self.__setupDataCollection(game)
 		self.__updateDataLoop(loop_count, thisTurn)
 
@@ -376,7 +323,7 @@ class Solver:
 			game.consoleDisplayVisible()
 			print('')
 			print('')
-			print('STARTING RECURSIVE ALGORITHM')
+			print('STARTING SOLUTION LOOP')
 
 		while(self.__AI_STATE != self.__STATE_CODE['DONE']):
 			### SETUP LOOP
@@ -438,13 +385,14 @@ class Solver:
 		solution = game.getGameSolution()
 
 		# Count of each kind of cell content except bomb (0, 1, 2, etc.)
-		for i in range(9):
-			self.__DATA['GAME']['CELL_COUNT']['NUMERICAL'].append(self.__count(solution['BOARD'], str(i)))
+		self.__DATA['GAME']['CELL_COUNT']['NUMERICAL'] = [self._countAllCells(solution['BOARD'], str(i)) for i in range(9)]
 
 		# Count of bombs on the edge of the board (predicted more likely to end in giving up due to guessing)
-		edgesBoard = copy.deepcopy(solution['BOARD'])
-		for i in range(1, len(edgesBoard) - 1):
-			edgesBoard[i] = [edgesBoard[i][0], edgesBoard[i][len(edgesBoard[0]) - 1]]
-		self.__DATA['GAME']['CELL_COUNT']['BOMBS_AT_EDGES'] = self.__count(edgesBoard, 'BOMB')
+		edges = copy.deepcopy(solution['BOARD'])
+		edges = [edges[i] if (i == 0 or i == len(edges) - 1) else [edges[i][0], edges[i][len(edges[i]) - 1]]
+			for i in range(len(edges))]
+		# for i in range(1, len(edgesBoard) - 1):
+			# edgesBoard[i] = [edgesBoard[i][0], edgesBoard[i][len(edgesBoard[0]) - 1]]
+		self.__DATA['GAME']['CELL_COUNT']['BOMBS_AT_EDGES'] = self._countAllCells(edges, 'BOMB')
 
 		return game

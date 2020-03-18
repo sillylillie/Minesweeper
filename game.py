@@ -9,6 +9,7 @@ import copy
 import time
 import math
 import random
+from functionality import MinesweeperFunctions
 
 """
 Public members:
@@ -31,7 +32,7 @@ importGame(board) # somewhat broken
 getGameVisible()
 getGameSolution()
 """
-class Game:
+class Game(MinesweeperFunctions):
 	__LEVEL_CODE = {
 		'BEGINNER': {
 			'height': 8,
@@ -50,25 +51,6 @@ class Game:
 		},
 	}
 
-	__STATUS_CODE = {
-		'COVERED': '-',
-		'FLAGGED': '#',
-		'OPENED': '?',
-	}
-
-	__CONTENT_CODE = {
-		'BOMB': '!',
-		'0': ' ',
-		'1': 1,
-		'2': 2,
-		'3': 3,
-		'4': 4,
-		'5': 5,
-		'6': 6,
-		'7': 7,
-		'8': 8,
-	}
-
 	__STATE_CODE = {
 		'NOT_PLAYING': 0,
 		'READY_TO_PLAY': 1,
@@ -77,10 +59,6 @@ class Game:
 		'CLEANING': 4,
 		'WON': 5,
 	}
-
-	CELL_CODE = {}
-	CELL_CODE.update(__STATUS_CODE)
-	CELL_CODE.update(__CONTENT_CODE)
 
 	# options
 	__DEBUG = False
@@ -101,6 +79,8 @@ class Game:
 	__END_TIME = 0
 
 	def __init__(self, options=None):
+		super().__init__('status_on')
+
 		if options is not None:
 			if 'DEBUG' in options:
 				self.__DEBUG = options['DEBUG']
@@ -191,8 +171,8 @@ class Game:
 	def __lostCheck(self):
 		for x in self.__BOARD:
 			for y in x:
-				isBomb = y['CONTENT'] == self.__CONTENT_CODE['BOMB']
-				isOpen = y['STATUS'] == self.__STATUS_CODE['OPENED']
+				isBomb = y['CONTENT'] == self._CONTENT_CODE['BOMB']
+				isOpen = y['STATUS'] == self._STATUS_CODE['OPENED']
 
 				if isBomb and isOpen:
 					return True
@@ -201,8 +181,8 @@ class Game:
 	def __wonCheck(self):
 		for x in self.__BOARD:
 			for y in x:
-				isNotBomb = y['CONTENT'] != self.__CONTENT_CODE['BOMB']
-				isNotOpen = y['STATUS'] != self.__STATUS_CODE['OPENED']
+				isNotBomb = y['CONTENT'] != self._CONTENT_CODE['BOMB']
+				isNotOpen = y['STATUS'] != self._STATUS_CODE['OPENED']
 
 				if isNotBomb and isNotOpen:
 					return False
@@ -247,7 +227,7 @@ class Game:
 			raise ValueError('Invalid parameters: can not make a board of size {}x{} with {} bombs'.format(h,w,b))
 
 		# Add all cells, set status to covered
-		[self.__BOARD.append([{'STATUS': self.__STATUS_CODE['COVERED'], 'CONTENT': self.__CONTENT_CODE['0']} for i in range(w)]) for j in range(h)]
+		[self.__BOARD.append([{'STATUS': self._STATUS_CODE['COVERED'], 'CONTENT': self._CONTENT_CODE['0']} for i in range(w)]) for j in range(h)]
 
 		self.__TOTAL_BOMBS = b
 		self.__BOMBS_LEFT = b
@@ -256,72 +236,18 @@ class Game:
 		while b > 0:
 			x = random.randrange(h)
 			y = random.randrange(w)
-			if self.__BOARD[x][y]['CONTENT'] != self.__CONTENT_CODE['BOMB']:
-				self.__BOARD[x][y].update({'CONTENT': self.__CONTENT_CODE['BOMB']})
+			if self.__BOARD[x][y]['CONTENT'] != self._CONTENT_CODE['BOMB']:
+				self.__BOARD[x][y].update({'CONTENT': self._CONTENT_CODE['BOMB']})
 				b = b - 1
 
 		for x in range(h):
 			for y in range(w):
-				if self.__BOARD[x][y]['CONTENT'] != self.__CONTENT_CODE['BOMB']:
-					self.__BOARD[x][y].update({'CONTENT': self.__CONTENT_CODE[str(self.__countBombs(x, y))]})
+				if self.__BOARD[x][y]['CONTENT'] != self._CONTENT_CODE['BOMB']:
+					self.__BOARD[x][y].update({'CONTENT': self._CONTENT_CODE[str(self._countNeighbors(self.__BOARD, (x, y), 'BOMB', status_on=False))]})
 
 		self.__START_TIME = 0
 		self.__END_TIME = 0
 		self.__GAME_STATE = self.__STATE_CODE['READY_TO_PLAY']
-
-	@__validateArguments
-	def __countFlags(self, x, y):
-		return self.__countNeighbors(x, y, 'STATUS', 'FLAGGED')
-
-	@__validateArguments
-	def __countBombs(self, x, y):
-		return self.__countNeighbors(x, y, 'CONTENT', 'BOMB')
-
-	def __countNeighbors(self, x, y, code, subcode):
-		neighbors = self.__getNeighborCoordinates(x, y)
-		count = 0
-
-		for n in neighbors:
-			cell = self.__BOARD[n[0]][n[1]]
-			if code == 'STATUS' and cell[code] == self.__STATUS_CODE[subcode]:
-				count = count + 1
-			if code == 'CONTENT' and cell[code] == self.__CONTENT_CODE[subcode]:
-				count = count + 1
-
-		return count
-
-	def __getNeighborCoordinates(self, x, y):
-		coordinates = []
-		# These ranges specify a square around the given cell, 
-		# so nine coordinates will be added to the list
-		for i in range(-1,2):
-			for j in range(-1,2):
-				coordinates.append((x + i, y + j))
-
-		# If the cell is at the top, bottom, left, or right sides
-		# of the board, then set the coordinates past the side 
-		# to None and later remove them from the return value
-		if x == 0:
-			coordinates[0] = None
-			coordinates[1] = None
-			coordinates[2] = None
-		if x == len(self.__BOARD) - 1:
-			coordinates[6] = None
-			coordinates[7] = None
-			coordinates[8] = None
-		if y == 0:
-			coordinates[0] = None
-			coordinates[3] = None
-			coordinates[6] = None
-		if y == len(self.__BOARD[0]) - 1:
-			coordinates[2] = None
-			coordinates[5] = None
-			coordinates[8] = None
-
-		# Set coordinates for the given cell to None
-		coordinates[4] = None
-		
-		return [c for c in coordinates if c is not None]
 
 	def __displayOnMove(self):
 		if self.__DISPLAY_ON_MOVE and not self.__CHORD_STARTED:
@@ -330,8 +256,8 @@ class Game:
 
 	@__stateCheck
 	def __change_status(self, cell, code, altcode):
-		if cell['STATUS'] == self.__STATUS_CODE[code]:
-			cell['STATUS'] = self.__STATUS_CODE[altcode]
+		if cell['STATUS'] == self._STATUS_CODE[code]:
+			cell['STATUS'] = self._STATUS_CODE[altcode]
 
 	@__validateArguments
 	def flag(self, x, y):
@@ -359,11 +285,11 @@ class Game:
 		cell = self.__BOARD[x][y]
 		gameEnd = self.__change_status(cell, 'COVERED', 'OPENED')
 
-		if self.__BOARD[x][y]['CONTENT'] == self.__CONTENT_CODE['BOMB']:
+		if self.__BOARD[x][y]['CONTENT'] == self._CONTENT_CODE['BOMB']:
 			self.__BOMBS_LEFT = self.__BOMBS_LEFT - 1
 
 		# Chord if empty and not currently in the process of chording
-		if self.__mergeVisible(cell, 'STATUS') == self.__CONTENT_CODE['0'] and not self.__CHORD_STARTED:
+		if self.__mergeVisible(cell, 'STATUS') == self._CONTENT_CODE['0'] and not self.__CHORD_STARTED:
 			possibleGameEnd = self.chord(x, y)
 			gameEnd = possibleGameEnd if possibleGameEnd else gameEnd
 		else:
@@ -377,19 +303,19 @@ class Game:
 	# Whether the given cell is a bomb or not, it returns a list of all neighbors
 	# around (x, y) which are bombs themselves
 	def __moveBomb(self, x, y, a, b):
-		neighbors = self.__getNeighborCoordinates(x, y)
-		bombNeighbors = [n for n in neighbors if self.__BOARD[n[0]][n[1]]['CONTENT'] == self.__CONTENT_CODE['BOMB']]
+		neighbors = self._getAllNeighbors(self.__BOARD, (x, y))
+		bombNeighbors = [n for n in neighbors if self.__BOARD[n[0]][n[1]]['CONTENT'] == self._CONTENT_CODE['BOMB']]
 
-		if self.__BOARD[x][y]['CONTENT'] != self.__CONTENT_CODE['BOMB']:
+		if self.__BOARD[x][y]['CONTENT'] != self._CONTENT_CODE['BOMB']:
 			return bombNeighbors
 
 		value = len(bombNeighbors)
-		self.__BOARD[x][y]['CONTENT'] = self.__CONTENT_CODE[str(value)]
+		self.__BOARD[x][y]['CONTENT'] = self._CONTENT_CODE[str(value)]
 
 		for n in neighbors:
 			if n not in bombNeighbors:
 				value = self.__BOARD[n[0]][n[1]]['CONTENT'] - 1
-				self.__BOARD[n[0]][n[1]]['CONTENT'] = self.__CONTENT_CODE[str(value)]
+				self.__BOARD[n[0]][n[1]]['CONTENT'] = self._CONTENT_CODE[str(value)]
 
 		while True:
 			# TODO Should the user be asked to pass in another seed for randomly displacing bombs?
@@ -397,27 +323,27 @@ class Game:
 			# the new location of displaced bombs will also be the same for every successive run with that seed
 			i = random.randrange(len(self.__BOARD))
 			j = random.randrange(len(self.__BOARD[0]))
-			if self.__BOARD[i][j]['CONTENT'] != self.__CONTENT_CODE['BOMB']:
+			if self.__BOARD[i][j]['CONTENT'] != self._CONTENT_CODE['BOMB']:
 				# Compare to where the actual location is
-				if (i, j) not in self.__getNeighborCoordinates(a, b) and (i, j) != (a, b):
-					self.__BOARD[i][j]['CONTENT'] = self.__CONTENT_CODE['BOMB']
+				if (i, j) not in self._getAllNeighbors(self.__BOARD, (a, b)) and (i, j) != (a, b):
+					self.__BOARD[i][j]['CONTENT'] = self._CONTENT_CODE['BOMB']
 					break
 
-		newNeighbors = self.__getNeighborCoordinates(i, j)
-		newBombNeighbors = [n for n in newNeighbors if self.__BOARD[n[0]][n[1]]['CONTENT'] == self.__CONTENT_CODE['BOMB']]
+		newNeighbors = self._getAllNeighbors(self.__BOARD, (i, j))
+		newBombNeighbors = [n for n in newNeighbors if self.__BOARD[n[0]][n[1]]['CONTENT'] == self._CONTENT_CODE['BOMB']]
 
 		for n in newNeighbors:
 			if n not in newBombNeighbors:
 				value = self.__BOARD[n[0]][n[1]]['CONTENT']
-				value = (0 if value == self.__CONTENT_CODE['0'] else value) + 1
-				self.__BOARD[n[0]][n[1]]['CONTENT'] = self.__CONTENT_CODE[str(value)]
+				value = (0 if value == self._CONTENT_CODE['0'] else value) + 1
+				self.__BOARD[n[0]][n[1]]['CONTENT'] = self._CONTENT_CODE[str(value)]
 
 		return bombNeighbors
 
 	@__validateArguments
 	def chord(self, x, y):
 		# Can not chord on covered or flagged cells
-		if self.__BOARD[x][y]['STATUS'] != self.__STATUS_CODE['OPENED']:
+		if self.__BOARD[x][y]['STATUS'] != self._STATUS_CODE['OPENED']:
 			if not self.__SILENT:
 				print('Cannot chord on covered or flagged cells')
 			return
@@ -445,18 +371,18 @@ class Game:
 		for c in coordinates:
 			content = self.__BOARD[c[0]][c[1]]['CONTENT']
 			content = 0 if content == ' ' else content
-			if self.__countFlags(c[0], c[1]) != content:
+			if self._countNeighbors(self.__BOARD, c, 'FLAGGED', status_on=True) != content:
 				if not self.__SILENT:
 					print('Cannot chord on cells that are touching the wrong number of flags')
 				return False
 
 		allNeighbors = []
 		for c in coordinates:
-			allNeighbors.extend(self.__getNeighborCoordinates(c[0], c[1]))
+			allNeighbors.extend(self._getAllNeighbors(self.__BOARD, c))
 
 		# Remove duplicates and filter out any which are flagged or opened
 		allNeighbors = list(set(allNeighbors))
-		allNeighbors = [n for n in allNeighbors if self.__BOARD[n[0]][n[1]]['STATUS'] == self.__STATUS_CODE['COVERED']]
+		allNeighbors = [n for n in allNeighbors if self.__BOARD[n[0]][n[1]]['STATUS'] == self._STATUS_CODE['COVERED']]
 
 		for n in allNeighbors:
 			value = self.open(n[0], n[1])
@@ -466,7 +392,7 @@ class Game:
 				return False
 
 		# Filter out all recently opened neighbors that are not empty
-		allNeighbors = [n for n in allNeighbors if self.__BOARD[n[0]][n[1]]['CONTENT'] == self.__CONTENT_CODE['0']]
+		allNeighbors = [n for n in allNeighbors if self.__BOARD[n[0]][n[1]]['CONTENT'] == self._CONTENT_CODE['0']]
 
 		if len(allNeighbors) == 0:
 			return
@@ -478,7 +404,7 @@ class Game:
 	# of the cell taking the place of its status
 	# So if the status is opened, I will always return the content
 	def __mergeVisible(self, cell, code):
-		if cell['STATUS'] == self.__STATUS_CODE['OPENED']:
+		if cell['STATUS'] == self._STATUS_CODE['OPENED']:
 			return cell['CONTENT']
 		else:
 			return cell[code]
@@ -581,13 +507,12 @@ class Game:
 	def getBoardWidth(self):
 		return len(self.__BOARD[0]) if self.getBoardHeight() > 0 else 0
 
-	# TODO export and import somewhat broken
+	# TODO export and import are broken
 	# There needs to be a way to import the game state
 	# As well as the number of bombs left and time
 	def exportGame(self):
 		return copy.deepcopy(self.__BOARD)
 
-	# def importGame(self, board, game_state, start_time, pause_time):
 	def importGame(self, board, game_state, start_time, pause_time):
 		self.__BOARD = copy.deepcopy(board)
 		# If none of the cells have been opened, 
@@ -595,7 +520,7 @@ class Game:
 		playing = False
 		for row in self.__BOARD:
 			for cell in row:
-				if cell['CONTENT'] != self.__CONTENT_CODE['COVERED'] and cell['CONTENT'] != self.__CONTENT_CODE['FLAGGED']:
+				if cell['CONTENT'] != self._CONTENT_CODE['COVERED'] and cell['CONTENT'] != self._CONTENT_CODE['FLAGGED']:
 					playing = True
 		
 		self.__GAME_STATE = self.__STATE_CODE['PLAYING'] if playing else self.__STATE_CODE['READY_TO_PLAY']
