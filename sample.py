@@ -67,7 +67,6 @@ def printStats(data):
 		results[d]['PERCENT_EXPLORED'] = 1 - (results[d]['STILL_COVERED'] / data[d]['solver']['GAME']['CELL_COUNT']['TOTAL'])
 		results[d]['TIME'] = float(data[d]['solver']['LOOP'][-1]['TIME_ELAPSED'])
 
-
 	wins = len([w for w in results if w['RESULT'] == Solver.RESULT_CODE['WIN']])
 	total = len(data)
 
@@ -111,32 +110,38 @@ def solveMany(howMany, sleep=0.1, guess=False):
 
 	printStats(data)
 
-def solveOne(guess=False, delay=0.25, seeds=()):
+def solveOne(guess=False, delay=0.25, seeds=(), level='EXPERT'):
 	solver = Solver(options={'GUESS': guess, 'DELAY': delay, 'PRINT_MODE': 'BOARD'})
 
 	if len(seeds) != 2:
-		mygame = start_game(silent=False, options={'DISPLAY_ON_MOVE': False, 'PRINT_GUIDES': True, 'PRINT_SEED': True}, level='EXPERT', specs={})[0]
+		mygame = start_game(silent=False, options={'DISPLAY_ON_MOVE': False, 'PRINT_GUIDES': True, 'PRINT_SEED': True}, level=level, specs={})[0]
 	else:
-		mygame = start_game(startSeed=seeds[0], silent=False, options={'SEED': seeds[1], 'DISPLAY_ON_MOVE': False, 'PRINT_GUIDES': True, 'PRINT_SEED': True}, level='EXPERT', specs={})[0]
+		mygame = start_game(startSeed=seeds[0], silent=False, options={'SEED': seeds[1], 'DISPLAY_ON_MOVE': False, 'PRINT_GUIDES': True, 'PRINT_SEED': True}, level=level, specs={})[0]
 
 	# Note: pass by reference; will modify my own copy
 	try:
 		solver.solve(mygame)
-	except:
+	except Exception as e:
 		mygame.consoleDisplayVisible()
+		raise
 
 	data = [{'solver': solver.getData(), 'game': mygame.getGameSolution()}]
 	printStats(data)
 
 if __name__=='__main__':
 	# solveMany(500, sleep=0.69, guess=False)
-	solveOne(guess=True, delay=0.2)
+	solveOne(guess=True, delay=1)
 
 	# Favorite one so far
 	# solveOne(guess=False, delay=0.2, seeds=(76964, 69365))
 
 	# Integesting flag
 	# solveOne(guess=True, delay=0.2, seeds=(47620, 38800))
+
+	# Working on getting a solution via linear algebra
+	# solveOne(guess=True, delay=1, seeds=(7103, 62552), level='BEGINNER')
+	# solveOne(guess=True, delay=1, seeds=(88601, 81294), level='INTERMEDIATE')
+	# solveOne(guess=True, delay=1, seeds=(6864, 80500))
 
 	# PROBABILITY PROBLEMS: 
 	# Can find 1 to flag and 3 to open
