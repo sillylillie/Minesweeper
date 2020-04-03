@@ -130,7 +130,7 @@ def solveOne(guess=False, delay=0.25, seeds=(), level='EXPERT'):
 
 if __name__=='__main__':
 	# solveMany(500, sleep=0.69, guess=False)
-	solveOne(guess=True, delay=1)
+	# solveOne(guess=True, delay=1.21, level='EXPERT')
 
 	# Favorite one so far
 	# solveOne(guess=False, delay=0.2, seeds=(76964, 69365))
@@ -138,10 +138,24 @@ if __name__=='__main__':
 	# Integesting flag
 	# solveOne(guess=True, delay=0.2, seeds=(47620, 38800))
 
-	# Working on getting a solution via linear algebra
-	# solveOne(guess=True, delay=1, seeds=(7103, 62552), level='BEGINNER')
+	# Interesting open
+	# solveOne(guess=True, delay=1, seeds=(80297, 57359), level='INTERMEDIATE')
+
+	# Interesting lack of flag
+	# I would have expected a flag beneath the 2
+	# solveOne(guess=True, delay=1, seeds=(23652, 26727), level='INTERMEDIATE')
+
+	# LINEAR ALGEBRA PROBLEMS
+
+	solveOne(guess=True, delay=1, seeds=(7103, 62552), level='BEGINNER')
 	# solveOne(guess=True, delay=1, seeds=(88601, 81294), level='INTERMEDIATE')
+	# solveOne(guess=True, delay=1, seeds=(52028, 6463), level='INTERMEDIATE')
 	# solveOne(guess=True, delay=1, seeds=(6864, 80500))
+	# solveOne(guess=True, delay=1, seeds=(66524, 59132))
+
+	# Gets to a place with 20 unknowns in a group, candidate for further grouping
+	# Currently takes 17.8 seconds for that group
+	# solveOne(guess=True, delay=1, seeds=(37845, 99116)) 
 
 	# PROBABILITY PROBLEMS: 
 	# Can find 1 to flag and 3 to open
